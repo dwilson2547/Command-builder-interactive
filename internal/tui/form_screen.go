@@ -419,4 +419,3 @@ func commonPrefix(strs []string) string {
 	return prefix
 }
 
-
