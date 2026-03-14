@@ -1,0 +1,802 @@
+name: "default"
+description: "Built-in command set"
+version: "1.0.0"
+commands:
+  - name: "openssl"
+    description: "OpenSSL cryptographic toolkit"
+    options:
+      - name: "print-p12"
+        description: "Print P12 keystore content"
+        template: "openssl pkcs12 -info -in {{input_file}} -passin pass:{{password}}"
+        inputs:
+          - name: "input_file"
+            type: "file"
+            description: "P12/PFX file path"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Keystore password"
+            required: false
+            default: ""
+      - name: "generate-rsa-key"
+        description: "Generate RSA private key"
+        template: "openssl genrsa -out {{output_file}} {{key_size}}"
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output key file path"
+            required: true
+          - name: "key_size"
+            type: "string"
+            description: "Key size in bits (2048, 4096)"
+            required: false
+            default: "2048"
+      - name: "generate-self-signed-cert"
+        description: "Generate self-signed certificate"
+        template: "openssl req -x509 -newkey rsa:{{key_size}} -keyout {{key_file}} -out {{cert_file}} -days {{days}} -nodes -subj \"/CN={{common_name}}\""
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Output key file path"
+            required: true
+          - name: "cert_file"
+            type: "file"
+            description: "Output certificate file path"
+            required: true
+          - name: "key_size"
+            type: "string"
+            description: "Key size in bits"
+            required: false
+            default: "4096"
+          - name: "days"
+            type: "string"
+            description: "Validity in days"
+            required: false
+            default: "365"
+          - name: "common_name"
+            type: "string"
+            description: "Common name (CN)"
+            required: true
+      - name: "create-csr"
+        description: "Create certificate signing request"
+        template: "openssl req -new -key {{key_file}} -out {{csr_file}} -subj \"/CN={{common_name}}/O={{org}}/C={{country}}\""
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Private key file"
+            required: true
+          - name: "csr_file"
+            type: "file"
+            description: "Output CSR file"
+            required: true
+          - name: "common_name"
+            type: "string"
+            description: "Common Name"
+            required: true
+          - name: "org"
+            type: "string"
+            description: "Organization"
+            required: false
+            default: ""
+          - name: "country"
+            type: "string"
+            description: "Country code (e.g. US)"
+            required: false
+            default: "US"
+      - name: "encrypt-file"
+        description: "Encrypt a file with AES-256"
+        template: "openssl enc -aes-256-cbc -salt -in {{input_file}} -out {{output_file}} -k {{password}}"
+        inputs:
+          - name: "input_file"
+            type: "file"
+            description: "Input file to encrypt"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output encrypted file"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Encryption password"
+            required: true
+      - name: "decrypt-file"
+        description: "Decrypt a file with AES-256"
+        template: "openssl enc -d -aes-256-cbc -in {{input_file}} -out {{output_file}} -k {{password}}"
+        inputs:
+          - name: "input_file"
+            type: "file"
+            description: "Encrypted input file"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output decrypted file"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Decryption password"
+            required: true
+      - name: "view-certificate"
+        description: "View certificate details"
+        template: "openssl x509 -in {{cert_file}} -text -noout"
+        inputs:
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate file (.crt, .pem)"
+            required: true
+
+  - name: "tar"
+    description: "Tape archive utility"
+    options:
+      - name: "create-tarball"
+        description: "Create tar archive"
+        template: "tar -cvf {{output_file}} {{source}}"
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output .tar file"
+            required: true
+          - name: "source"
+            type: "dir"
+            description: "Source file or directory"
+            required: true
+      - name: "create-gzip"
+        description: "Create gzip compressed archive"
+        template: "tar -czvf {{output_file}} {{source}}"
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output .tar.gz file"
+            required: true
+          - name: "source"
+            type: "dir"
+            description: "Source file or directory"
+            required: true
+      - name: "create-bzip2"
+        description: "Create bzip2 compressed archive"
+        template: "tar -cjvf {{output_file}} {{source}}"
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output .tar.bz2 file"
+            required: true
+          - name: "source"
+            type: "dir"
+            description: "Source file or directory"
+            required: true
+      - name: "extract-tarball"
+        description: "Extract tar archive"
+        template: "tar -xvf {{archive}} -C {{dest_dir}}"
+        inputs:
+          - name: "archive"
+            type: "file"
+            description: "Archive file to extract"
+            required: true
+          - name: "dest_dir"
+            type: "dir"
+            description: "Destination directory"
+            required: false
+            default: "."
+      - name: "extract-gzip"
+        description: "Extract gzip compressed archive"
+        template: "tar -xzvf {{archive}} -C {{dest_dir}}"
+        inputs:
+          - name: "archive"
+            type: "file"
+            description: ".tar.gz archive file"
+            required: true
+          - name: "dest_dir"
+            type: "dir"
+            description: "Destination directory"
+            required: false
+            default: "."
+      - name: "list-contents"
+        description: "List contents of archive"
+        template: "tar -tvf {{archive}}"
+        inputs:
+          - name: "archive"
+            type: "file"
+            description: "Archive file"
+            required: true
+
+  - name: "ssh"
+    description: "Secure Shell client"
+    options:
+      - name: "connect"
+        description: "Connect to remote host"
+        template: "ssh {{user}}@{{host}} -p {{port}}"
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+          - name: "port"
+            type: "string"
+            description: "SSH port"
+            required: false
+            default: "22"
+      - name: "copy-id"
+        description: "Copy SSH public key to remote host"
+        template: "ssh-copy-id -i {{key_file}} {{user}}@{{host}}"
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Public key file (.pub)"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+      - name: "tunnel-local"
+        description: "Create local port forwarding tunnel"
+        template: "ssh -L {{local_port}}:{{remote_host}}:{{remote_port}} {{user}}@{{jump_host}} -N"
+        inputs:
+          - name: "local_port"
+            type: "string"
+            description: "Local port to listen on"
+            required: true
+          - name: "remote_host"
+            type: "string"
+            description: "Remote host to forward to"
+            required: true
+          - name: "remote_port"
+            type: "string"
+            description: "Remote port to forward to"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "SSH username"
+            required: true
+          - name: "jump_host"
+            type: "string"
+            description: "SSH jump host"
+            required: true
+      - name: "tunnel-remote"
+        description: "Create remote port forwarding tunnel"
+        template: "ssh -R {{remote_port}}:{{local_host}}:{{local_port}} {{user}}@{{host}} -N"
+        inputs:
+          - name: "remote_port"
+            type: "string"
+            description: "Remote port to listen on"
+            required: true
+          - name: "local_host"
+            type: "string"
+            description: "Local host to forward from"
+            required: false
+            default: "localhost"
+          - name: "local_port"
+            type: "string"
+            description: "Local port to forward from"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "SSH username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote SSH host"
+            required: true
+      - name: "generate-key"
+        description: "Generate SSH key pair"
+        template: "ssh-keygen -t {{key_type}} -b {{key_size}} -f {{output_file}} -C \"{{comment}}\""
+        inputs:
+          - name: "key_type"
+            type: "string"
+            description: "Key type (rsa, ed25519, ecdsa)"
+            required: false
+            default: "ed25519"
+          - name: "key_size"
+            type: "string"
+            description: "Key size (for rsa: 2048, 4096)"
+            required: false
+            default: "4096"
+          - name: "output_file"
+            type: "file"
+            description: "Output key file path"
+            required: true
+          - name: "comment"
+            type: "string"
+            description: "Key comment (e.g. email)"
+            required: false
+            default: ""
+
+  - name: "curl"
+    description: "Transfer data with URLs"
+    options:
+      - name: "get-request"
+        description: "HTTP GET request"
+        template: "curl -X GET {{url}} -H \"Accept: application/json\""
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Request URL"
+            required: true
+      - name: "post-json"
+        description: "HTTP POST with JSON body"
+        template: "curl -X POST {{url}} -H \"Content-Type: application/json\" -d '{{body}}'"
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Request URL"
+            required: true
+          - name: "body"
+            type: "string"
+            description: "JSON request body"
+            required: true
+      - name: "post-form"
+        description: "HTTP POST with form data"
+        template: "curl -X POST {{url}} -d \"{{form_data}}\""
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Request URL"
+            required: true
+          - name: "form_data"
+            type: "string"
+            description: "Form data (key=value&key2=value2)"
+            required: true
+      - name: "download-file"
+        description: "Download file from URL"
+        template: "curl -L -o {{output_file}} {{url}}"
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Download URL"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output file path"
+            required: true
+      - name: "with-auth"
+        description: "Request with basic authentication"
+        template: "curl -X {{method}} {{url}} -u {{username}}:{{password}}"
+        inputs:
+          - name: "method"
+            type: "string"
+            description: "HTTP method (GET, POST, PUT, DELETE)"
+            required: false
+            default: "GET"
+          - name: "url"
+            type: "string"
+            description: "Request URL"
+            required: true
+          - name: "username"
+            type: "string"
+            description: "Username"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Password"
+            required: true
+      - name: "with-headers"
+        description: "Request with custom headers"
+        template: "curl -X {{method}} {{url}} -H \"{{header1}}\" -H \"{{header2}}\""
+        inputs:
+          - name: "method"
+            type: "string"
+            description: "HTTP method"
+            required: false
+            default: "GET"
+          - name: "url"
+            type: "string"
+            description: "Request URL"
+            required: true
+          - name: "header1"
+            type: "string"
+            description: "First header (Key: Value)"
+            required: true
+          - name: "header2"
+            type: "string"
+            description: "Second header (Key: Value)"
+            required: false
+            default: ""
+
+  - name: "find"
+    description: "Search for files in directory hierarchy"
+    options:
+      - name: "by-name"
+        description: "Find files by name pattern"
+        template: "find {{directory}} -name \"{{pattern}}\""
+        inputs:
+          - name: "directory"
+            type: "dir"
+            description: "Starting directory"
+            required: false
+            default: "."
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern (e.g. *.log)"
+            required: true
+      - name: "by-type"
+        description: "Find by type (f=file, d=dir, l=symlink)"
+        template: "find {{directory}} -type {{type}} -name \"{{pattern}}\""
+        inputs:
+          - name: "directory"
+            type: "dir"
+            description: "Starting directory"
+            required: false
+            default: "."
+          - name: "type"
+            type: "string"
+            description: "Type: f (file), d (dir), l (symlink)"
+            required: true
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern"
+            required: false
+            default: "*"
+      - name: "by-size"
+        description: "Find files by size"
+        template: "find {{directory}} -size {{size}}"
+        inputs:
+          - name: "directory"
+            type: "dir"
+            description: "Starting directory"
+            required: false
+            default: "."
+          - name: "size"
+            type: "string"
+            description: "Size (e.g. +10M, -1G, 100k)"
+            required: true
+      - name: "by-date"
+        description: "Find files modified within N days"
+        template: "find {{directory}} -mtime -{{days}}"
+        inputs:
+          - name: "directory"
+            type: "dir"
+            description: "Starting directory"
+            required: false
+            default: "."
+          - name: "days"
+            type: "string"
+            description: "Number of days"
+            required: true
+      - name: "by-permissions"
+        description: "Find files by permissions"
+        template: "find {{directory}} -perm {{perms}}"
+        inputs:
+          - name: "directory"
+            type: "dir"
+            description: "Starting directory"
+            required: false
+            default: "."
+          - name: "perms"
+            type: "string"
+            description: "Permissions (e.g. 644, -u+x)"
+            required: true
+      - name: "find-and-delete"
+        description: "Find and delete matching files"
+        template: "find {{directory}} -name \"{{pattern}}\" -type f -delete"
+        inputs:
+          - name: "directory"
+            type: "dir"
+            description: "Starting directory"
+            required: false
+            default: "."
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern to delete"
+            required: true
+
+  - name: "grep"
+    description: "Search text patterns in files"
+    options:
+      - name: "search-file"
+        description: "Search for pattern in a file"
+        template: "grep -n \"{{pattern}}\" {{file}}"
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Search pattern"
+            required: true
+          - name: "file"
+            type: "file"
+            description: "File to search"
+            required: true
+      - name: "search-recursive"
+        description: "Recursively search in directory"
+        template: "grep -rn \"{{pattern}}\" {{directory}}"
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Search pattern"
+            required: true
+          - name: "directory"
+            type: "dir"
+            description: "Directory to search"
+            required: false
+            default: "."
+      - name: "search-pattern"
+        description: "Search with extended regex"
+        template: "grep -E \"{{pattern}}\" {{file}}"
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Extended regex pattern"
+            required: true
+          - name: "file"
+            type: "file"
+            description: "File to search"
+            required: true
+      - name: "search-with-context"
+        description: "Search with surrounding context lines"
+        template: "grep -n -A {{after}} -B {{before}} \"{{pattern}}\" {{file}}"
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Search pattern"
+            required: true
+          - name: "file"
+            type: "file"
+            description: "File to search"
+            required: true
+          - name: "after"
+            type: "string"
+            description: "Lines after match"
+            required: false
+            default: "3"
+          - name: "before"
+            type: "string"
+            description: "Lines before match"
+            required: false
+            default: "3"
+
+  - name: "docker"
+    description: "Docker container platform"
+    options:
+      - name: "build-image"
+        description: "Build Docker image from Dockerfile"
+        template: "docker build -t {{image_name}}:{{tag}} -f {{dockerfile}} {{context}}"
+        inputs:
+          - name: "image_name"
+            type: "string"
+            description: "Image name"
+            required: true
+          - name: "tag"
+            type: "string"
+            description: "Image tag"
+            required: false
+            default: "latest"
+          - name: "dockerfile"
+            type: "file"
+            description: "Dockerfile path"
+            required: false
+            default: "Dockerfile"
+          - name: "context"
+            type: "dir"
+            description: "Build context directory"
+            required: false
+            default: "."
+      - name: "run-container"
+        description: "Run a Docker container"
+        template: "docker run -d --name {{container_name}} -p {{host_port}}:{{container_port}} {{image_name}}:{{tag}}"
+        inputs:
+          - name: "container_name"
+            type: "string"
+            description: "Container name"
+            required: true
+          - name: "host_port"
+            type: "string"
+            description: "Host port"
+            required: true
+          - name: "container_port"
+            type: "string"
+            description: "Container port"
+            required: true
+          - name: "image_name"
+            type: "string"
+            description: "Image name"
+            required: true
+          - name: "tag"
+            type: "string"
+            description: "Image tag"
+            required: false
+            default: "latest"
+      - name: "exec-container"
+        description: "Execute command in running container"
+        template: "docker exec -it {{container}} {{command}}"
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+          - name: "command"
+            type: "string"
+            description: "Command to execute"
+            required: false
+            default: "/bin/bash"
+      - name: "copy-file"
+        description: "Copy files to/from container"
+        template: "docker cp {{source}} {{destination}}"
+        inputs:
+          - name: "source"
+            type: "string"
+            description: "Source path (container:path or local)"
+            required: true
+          - name: "destination"
+            type: "string"
+            description: "Destination path (container:path or local)"
+            required: true
+      - name: "inspect"
+        description: "Inspect container details"
+        template: "docker inspect {{container}}"
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+      - name: "logs"
+        description: "View container logs"
+        template: "docker logs -f --tail={{lines}} {{container}}"
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+          - name: "lines"
+            type: "string"
+            description: "Number of tail lines"
+            required: false
+            default: "100"
+
+  - name: "git"
+    description: "Distributed version control system"
+    options:
+      - name: "clone"
+        description: "Clone a repository"
+        template: "git clone {{repo_url}} {{directory}}"
+        inputs:
+          - name: "repo_url"
+            type: "string"
+            description: "Repository URL"
+            required: true
+          - name: "directory"
+            type: "dir"
+            description: "Target directory (optional)"
+            required: false
+            default: ""
+      - name: "create-branch"
+        description: "Create and switch to new branch"
+        template: "git checkout -b {{branch_name}} {{from_branch}}"
+        inputs:
+          - name: "branch_name"
+            type: "string"
+            description: "New branch name"
+            required: true
+          - name: "from_branch"
+            type: "string"
+            description: "Base branch (optional)"
+            required: false
+            default: ""
+      - name: "diff-files"
+        description: "Show diff for specific files"
+        template: "git diff {{commit1}} {{commit2}} -- {{file}}"
+        inputs:
+          - name: "commit1"
+            type: "string"
+            description: "First commit/branch"
+            required: false
+            default: "HEAD~1"
+          - name: "commit2"
+            type: "string"
+            description: "Second commit/branch"
+            required: false
+            default: "HEAD"
+          - name: "file"
+            type: "file"
+            description: "File path (optional)"
+            required: false
+            default: ""
+      - name: "log-graph"
+        description: "Show commit graph"
+        template: "git log --oneline --graph --decorate --all -n {{count}}"
+        inputs:
+          - name: "count"
+            type: "string"
+            description: "Number of commits to show"
+            required: false
+            default: "20"
+      - name: "reset-hard"
+        description: "Hard reset to commit"
+        template: "git reset --hard {{commit}}"
+        inputs:
+          - name: "commit"
+            type: "string"
+            description: "Commit hash or ref (e.g. HEAD~1)"
+            required: true
+      - name: "cherry-pick"
+        description: "Cherry-pick commit"
+        template: "git cherry-pick {{commit}}"
+        inputs:
+          - name: "commit"
+            type: "string"
+            description: "Commit hash to cherry-pick"
+            required: true
+
+  - name: "chmod"
+    description: "Change file permissions"
+    options:
+      - name: "set-permissions"
+        description: "Set file permissions"
+        template: "chmod {{permissions}} {{file}}"
+        inputs:
+          - name: "permissions"
+            type: "string"
+            description: "Permissions (e.g. 755, u+x, a-w)"
+            required: true
+          - name: "file"
+            type: "file"
+            description: "File or directory"
+            required: true
+      - name: "recursive-permissions"
+        description: "Recursively set permissions"
+        template: "chmod -R {{permissions}} {{directory}}"
+        inputs:
+          - name: "permissions"
+            type: "string"
+            description: "Permissions (e.g. 755)"
+            required: true
+          - name: "directory"
+            type: "dir"
+            description: "Target directory"
+            required: true
+
+  - name: "rsync"
+    description: "Remote file synchronization"
+    options:
+      - name: "sync-local"
+        description: "Sync local directories"
+        template: "rsync -avh --progress {{source}} {{destination}}"
+        inputs:
+          - name: "source"
+            type: "dir"
+            description: "Source directory"
+            required: true
+          - name: "destination"
+            type: "dir"
+            description: "Destination directory"
+            required: true
+      - name: "sync-remote"
+        description: "Sync to remote host"
+        template: "rsync -avh --progress -e \"ssh -p {{port}}\" {{source}} {{user}}@{{host}}:{{remote_path}}"
+        inputs:
+          - name: "source"
+            type: "dir"
+            description: "Local source directory"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+          - name: "remote_path"
+            type: "dir"
+            description: "Remote destination path"
+            required: true
+          - name: "port"
+            type: "string"
+            description: "SSH port"
+            required: false
+            default: "22"
+      - name: "mirror-directory"
+        description: "Mirror directory (delete extraneous files)"
+        template: "rsync -avh --delete --progress {{source}} {{destination}}"
+        inputs:
+          - name: "source"
+            type: "dir"
+            description: "Source directory"
+            required: true
+          - name: "destination"
+            type: "dir"
+            description: "Destination directory"
+            required: true
