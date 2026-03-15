@@ -81,6 +81,15 @@ func (m *Manager) AddConfig(cfg *Config) error {
 	return nil
 }
 
+// UpdateConfig persists in-memory changes made to an already-loaded config.
+// Returns an error if the config has no file path (built-in configs).
+func (m *Manager) UpdateConfig(cfg *Config) error {
+	if cfg.FilePath == "" {
+		return fmt.Errorf("config %q is a built-in config and cannot be modified", cfg.Name)
+	}
+	return SaveConfig(cfg, cfg.FilePath)
+}
+
 // DeleteConfig removes a config by name, deleting its file if it has one.
 func (m *Manager) DeleteConfig(name string) error {
 	for i, c := range m.configs {

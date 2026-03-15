@@ -119,6 +119,16 @@ func (m ConfigScreenModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, m.input.Focus()
 			}
 
+		case "e", "E":
+			if len(m.configs) > 0 {
+				cfg := m.configs[m.selected]
+				if cfg.FilePath == "" {
+					m.message = StyleError.Render("Cannot edit the built-in default config")
+					break
+				}
+				return m, func() tea.Msg { return goToEditMsg{cfg: cfg} }
+			}
+
 		case "i", "I":
 			m.action = actionImport
 			m.input.SetValue("")
@@ -302,6 +312,7 @@ func (m ConfigScreenModel) View() string {
 	}
 
 	keys := StyleStatusKey.Render(" n") + StyleStatus.Render(" new") +
+		StyleStatusKey.Render("  e") + StyleStatus.Render(" edit") +
 		StyleStatusKey.Render("  d") + StyleStatus.Render(" delete") +
 		StyleStatusKey.Render("  x") + StyleStatus.Render(" export") +
 		StyleStatusKey.Render("  i") + StyleStatus.Render(" import URL") +

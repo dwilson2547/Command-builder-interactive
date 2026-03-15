@@ -32,6 +32,7 @@ const (
 	screenSearch = iota
 	screenForm
 	screenConfig
+	screenEdit
 )
 
 // AppModel is the root bubbletea model. It routes messages to the active screen.
@@ -41,6 +42,7 @@ type AppModel struct {
 	search       SearchModel
 	form         FormModel
 	cfgScreen    ConfigScreenModel
+	editScreen   EditScreenModel
 	finalCmd     string
 	width        int
 	height       int
@@ -86,6 +88,11 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.cfgScreen = cs.(ConfigScreenModel)
 			cmds = append(cmds, c)
 		}
+		if a.activeScreen == screenEdit {
+			es, c := a.editScreen.Update(msg)
+			a.editScreen = es.(EditScreenModel)
+			cmds = append(cmds, c)
+		}
 		return a, tea.Batch(cmds...)
 
 	case selectOptionMsg:
@@ -97,6 +104,11 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.cfgScreen = NewConfigScreenModel(a.mgr, a.width, a.height)
 		a.activeScreen = screenConfig
 		return a, a.cfgScreen.Init()
+
+	case goToEditMsg:
+		a.editScreen = NewEditScreenModel(a.mgr, msg.cfg, a.width, a.height)
+		a.activeScreen = screenEdit
+		return a, a.editScreen.Init()
 
 	case backToSearchMsg:
 		a.activeScreen = screenSearch
@@ -125,6 +137,10 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var m tea.Model
 		m, cmd = a.cfgScreen.Update(msg)
 		a.cfgScreen = m.(ConfigScreenModel)
+	case screenEdit:
+		var m tea.Model
+		m, cmd = a.editScreen.Update(msg)
+		a.editScreen = m.(EditScreenModel)
 	}
 	return a, cmd
 }
@@ -136,6 +152,8 @@ func (a AppModel) View() string {
 		return a.form.View()
 	case screenConfig:
 		return a.cfgScreen.View()
+	case screenEdit:
+		return a.editScreen.View()
 	default:
 		return a.search.View()
 	}
