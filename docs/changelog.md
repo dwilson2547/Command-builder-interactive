@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.9.0] - 2026-03-15
+
+### New Features
+
+- **Auto-detect template variables as inputs**
+  When saving a new or edited Option in the command editor, the template string
+  is scanned for `{{varName}}` placeholders. Any variable that does not already
+  have a corresponding Input entry is automatically added as an optional
+  `string` input, saving the user from manually re-entering every placeholder
+  as an Input. Variables are deduplicated — repeated occurrences of the same
+  placeholder produce a single Input.  The generated inputs can be further
+  refined (type, description, required flag, default value) by drilling into
+  the Inputs level with `Enter` and pressing `e` to edit.
+
+---
+
 ## [1.8.0] - 2026-03-15
 
 ### New Features

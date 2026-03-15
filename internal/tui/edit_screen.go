@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -367,6 +368,28 @@ func (m EditScreenModel) saveForm() (EditScreenModel, error) {
 			cmd.Options[m.optIdx].Description = desc
 			cmd.Options[m.optIdx].Template = tmpl
 			cmd.Options[m.optIdx].Tags = parsedTags
+		}
+
+		// Auto-detect {{varName}} placeholders in the template and add any
+		// missing inputs as optional string inputs.
+		if tmpl != "" && m.optIdx < len(cmd.Options) {
+			opt := &cmd.Options[m.optIdx]
+			varRe := regexp.MustCompile(`\{\{(\w+)\}\}`)
+			existing := make(map[string]bool, len(opt.Inputs))
+			for _, inp := range opt.Inputs {
+				existing[inp.Name] = true
+			}
+			for _, sub := range varRe.FindAllStringSubmatch(tmpl, -1) {
+				varName := sub[1]
+				if !existing[varName] {
+					opt.Inputs = append(opt.Inputs, config.Input{
+						Name:     varName,
+						Type:     "string",
+						Required: false,
+					})
+					existing[varName] = true
+				}
+			}
 		}
 
 	case editLevelInputs:
