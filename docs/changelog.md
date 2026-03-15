@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.3.0] - 2026-03-15
+
+### New Features
+
+- **Tab autocomplete for `/import` in the search screen**
+  While typing `/import <path>` in the main search bar, pressing `Tab` now triggers
+  the same glob-based path completion used by the Config Manager's file import prompt:
+  - Single match → completed immediately.
+  - Multiple matches → first `Tab` fills the longest common prefix; subsequent presses
+    cycle through all matches, with the current selection highlighted.
+  - Up to 8 completions are shown inline in the results area while in `/import` mode.
+  - The hint bar updates to `Enter to import · Tab to autocomplete path` while
+    a `/import` prefix is active, and resets when the user clears the query.
+  - Completions reset automatically when the path is edited manually.
+
+---
+
+## [1.2.0] - 2026-03-15
+
+### New Features
+
+- **Import configs from local files**
+  Added `Manager.ImportConfigFromFile(path)` which reads a local YAML file, handles
+  `~` expansion, resolves to an absolute path, and copies the config into the managed
+  config directory — mirroring the behaviour of the existing URL import.
+  A leading `~` in the path is expanded to the user's home directory.
+
+- **`f` key in Config Manager to import from a local file**
+  Pressing `f` on the Config Manager screen opens a new "Import from local file" prompt.
+  The status bar now shows both `i import URL` and `f import file` hints.
+
+- **Tab autocomplete for the file import path**
+  While typing a file path in the import-file prompt, pressing `Tab` triggers
+  glob-based path completion:
+  - Single match → path is completed immediately.
+  - Multiple matches → first `Tab` fills the longest common prefix (bash-style);
+    subsequent `Tab` presses cycle through all matches.
+  - Up to five completions are shown as an inline list below the input; the currently
+    selected entry is highlighted.
+  - Completions reset automatically when the path is edited manually.
+
+- **`/import` slash command now accepts local file paths**
+  On the search screen, `/import <value>` previously only accepted URLs. It now
+  auto-detects the argument: values starting with `http://` or `https://` are fetched
+  as URLs; everything else is treated as a local file path and imported via
+  `ImportConfigFromFile`. The hint text is updated to reflect this.
+
+---
+
 ## [1.1.0] - 2026-03-15
 
 ### Maintenance

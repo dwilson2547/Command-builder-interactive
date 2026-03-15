@@ -26,6 +26,9 @@ type commandConfirmedMsg struct{ command string }
 // importURLMsg requests an import-from-URL operation.
 type importURLMsg struct{ url string }
 
+// importFileMsg requests an import-from-local-file operation.
+type importFileMsg struct{ path string }
+
 // ---- screen identifiers ----
 
 const (

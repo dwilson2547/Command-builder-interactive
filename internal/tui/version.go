@@ -7,4 +7,4 @@ package tui
 //
 // The build script (build.sh) handles this automatically.
 // Increment the minor version for every change unless otherwise specified.
-var AppVersion = "v1.1.0"
+var AppVersion = "v1.3.0"

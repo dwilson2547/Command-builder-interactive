@@ -163,6 +163,53 @@ func (m *Manager) ImportConfigFromURL(rawURL string) (*Config, error) {
 	return cfg, nil
 }
 
+// ImportConfigFromFile loads a YAML config from a local file path and adds it.
+// A leading ~ in the path is expanded to the user's home directory.
+// The config is copied into the command-builder config directory, mirroring
+// the behaviour of ImportConfigFromURL.
+func (m *Manager) ImportConfigFromFile(rawPath string) (*Config, error) {
+	// Expand ~ prefix.
+	path := rawPath
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("cannot determine home directory: %w", err)
+		}
+		path = filepath.Join(home, path[2:])
+	} else if path == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("cannot determine home directory: %w", err)
+		}
+		path = home
+	}
+
+	// Resolve to absolute path.
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid path %q: %w", rawPath, err)
+	}
+
+	cfg, err := LoadConfig(abs)
+	if err != nil {
+		return nil, fmt.Errorf("load config from file: %w", err)
+	}
+
+	// Resolve name collision.
+	base := cfg.Name
+	counter := 1
+	for m.GetConfig(cfg.Name) != nil {
+		cfg.Name = fmt.Sprintf("%s-%d", base, counter)
+		counter++
+	}
+
+	// Copy into the managed config directory.
+	if err := m.AddConfig(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
 // PullConfig re-fetches a config from its SourceURL and replaces its commands
 // in place, preserving the config name and file path.
 func (m *Manager) PullConfig(name string) (*Config, error) {
