@@ -30,6 +30,10 @@ func NewSearchModel(mgr *config.Manager) SearchModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search commands… (e.g. 'openssl print p12')"
 	ti.Width = 60
+	// Focus must be set here on the local variable. If it were deferred to
+	// Init(), the change would apply to a value-receiver copy and be lost,
+	// leaving the input permanently unfocused and unable to accept keystrokes.
+	ti.Focus()
 
 	m := SearchModel{
 		mgr:   mgr,
@@ -44,9 +48,10 @@ func runSearch(query string, mgr *config.Manager) []search.SearchResult {
 	return search.Search(query, mgr.ListConfigs(), filter)
 }
 
-// Init satisfies tea.Model – focus the search input immediately.
+// Init satisfies tea.Model – start cursor blinking. Focus is already set in
+// NewSearchModel so we only need the blink command here.
 func (m SearchModel) Init() tea.Cmd {
-	return m.input.Focus()
+	return textinput.Blink
 }
 
 // Update satisfies tea.Model.
