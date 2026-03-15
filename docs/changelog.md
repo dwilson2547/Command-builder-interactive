@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.10.0] - 2026-03-15
+
+### Documentation
+
+- **User guide** (`docs/user-guide.md`)
+  Added a comprehensive end-user guide covering all major workflows:
+  - Installation and launching (pre-built binary and build-from-source).
+  - Search screen: basic search, tag-based search, slash-prefix filters
+    (`/default`, `/all`, `/<name>`, `/config`, `/import`, `/settings`).
+  - Form screen: filling required and optional fields, Tab path completion
+    for `file`/`dir` inputs, live command preview, confirming and capturing
+    output via stdout.
+  - Config Manager: importing from a URL or local file (with Tab completion),
+    creating empty configs, updating from a source URL, exporting, and
+    deleting (including restoring the hidden built-in default).
+  - Command editor: all three levels (Commands → Options → Inputs), creating
+    and editing options with template placeholders and tags, auto-generation
+    of inputs from `{{variable}}` placeholders on save, and all four input
+    types (`string`, `file`, `dir`, `flag`).
+  - Settings screen: changing individual colours (ANSI or hex), resetting one
+    or all colours, and the persistent `settings.json` storage location.
+  - Tips & tricks section: eval piping, team config sharing via URL, quick
+    `/import` from the search bar, config directory backup, and restoring the
+    built-in default.
+  ASCII-art mock screenshots are included throughout to illustrate each screen.
+
+---
+
 ## [1.9.0] - 2026-03-15
 
 ### New Features
