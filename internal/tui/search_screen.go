@@ -241,7 +241,7 @@ func (m SearchModel) View() string {
 
 	// ── Title bar ──────────────────────────────────────────────────────────
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ Command Builder " + StyleTitleVersion.Render(AppVersion),
+		"⚡ " + AppDisplayName + " " + StyleTitleVersion.Render(AppVersion),
 	)
 	b.WriteString(title + "\n")
 

@@ -10,6 +10,7 @@ import (
 // Color values are strings accepted by lipgloss.Color – either ANSI terminal
 // colour codes ("0"–"255") or hex colours ("#rrggbb").
 type AppSettings struct {
+	AppName         string `json:"app_name"`
 	ColorPrimary    string `json:"color_primary"`
 	ColorAccent     string `json:"color_accent"`
 	ColorSuccess    string `json:"color_success"`
@@ -24,6 +25,7 @@ type AppSettings struct {
 // DefaultSettings returns a settings instance with the built-in colour palette.
 func DefaultSettings() AppSettings {
 	return AppSettings{
+		AppName:         "Command Builder",
 		ColorPrimary:    "39",
 		ColorAccent:     "213",
 		ColorSuccess:    "76",
@@ -81,6 +83,9 @@ func LoadSettings() AppSettings {
 	}
 	if tmp.ColorSelected != "" {
 		s.ColorSelected = tmp.ColorSelected
+	}
+	if tmp.AppName != "" {
+		s.AppName = tmp.AppName
 	}
 	return s
 }

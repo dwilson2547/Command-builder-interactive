@@ -426,7 +426,7 @@ func (m ConfigScreenModel) View() string {
 
 	// ── Title ──────────────────────────────────────────────────────────────
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ Command Builder " + StyleTitleVersion.Render(AppVersion) + "  " +
+		"⚡ " + AppDisplayName + " " + StyleTitleVersion.Render(AppVersion) + "  " +
 			StyleResultDesc.Render("Config Manager"),
 	)
 	b.WriteString(title + "\n")

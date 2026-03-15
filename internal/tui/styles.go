@@ -82,6 +82,13 @@ func init() {
 // settings. Call this on startup (after loading saved settings) and again
 // whenever the user changes a colour in the /settings screen.
 func ApplyTheme(s config.AppSettings) {
+	// Update display name.
+	if s.AppName != "" {
+		AppDisplayName = s.AppName
+	} else {
+		AppDisplayName = "Command Builder"
+	}
+
 	colorPrimary = lipgloss.Color(s.ColorPrimary)
 	colorAccent = lipgloss.Color(s.ColorAccent)
 	colorSuccess = lipgloss.Color(s.ColorSuccess)

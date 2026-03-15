@@ -7,4 +7,8 @@ package tui
 //
 // The build script (build.sh) handles this automatically.
 // Increment the minor version for every change unless otherwise specified.
-var AppVersion = "v1.10.0"
+var AppVersion = "v1.11.0"
+
+// AppDisplayName is the application name shown in the header.
+// It defaults to "Command Builder" and is updated from user settings via ApplyTheme.
+var AppDisplayName = "Command Builder"
