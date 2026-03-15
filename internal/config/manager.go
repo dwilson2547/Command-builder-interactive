@@ -147,6 +147,8 @@ func (m *Manager) ImportConfigFromURL(rawURL string) (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
+	cfg.SourceURL = rawURL
+
 	// Resolve name collision.
 	base := cfg.Name
 	counter := 1
@@ -159,6 +161,58 @@ func (m *Manager) ImportConfigFromURL(rawURL string) (*Config, error) {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+// PullConfig re-fetches a config from its SourceURL and replaces its commands
+// in place, preserving the config name and file path.
+func (m *Manager) PullConfig(name string) (*Config, error) {
+	existing := m.GetConfig(name)
+	if existing == nil {
+		return nil, fmt.Errorf("config %q not found", name)
+	}
+	if existing.SourceURL == "" {
+		return nil, fmt.Errorf("config %q has no source URL", name)
+	}
+
+	parsed, err := url.ParseRequestURI(existing.SourceURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid source URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, fmt.Errorf("unsupported URL scheme %q", parsed.Scheme)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(existing.SourceURL) //nolint:noctx
+	if err != nil {
+		return nil, fmt.Errorf("fetch %s: %w", existing.SourceURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d fetching %s", resp.StatusCode, existing.SourceURL)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	fresh, err := LoadConfigFromBytes(data)
+	if err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	// Preserve identity fields; replace content.
+	existing.Description = fresh.Description
+	existing.Version = fresh.Version
+	existing.Commands = fresh.Commands
+	// Keep existing.SourceURL and existing.FilePath unchanged.
+
+	if err := m.UpdateConfig(existing); err != nil {
+		return nil, err
+	}
+	return existing, nil
 }
 
 // RenameConfig renames a config and its backing file.

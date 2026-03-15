@@ -1,0 +1,12 @@
+- [x] create copilot-instructions.md
+- [x] project versioning, increment minor version for all changes unless otherwise specified
+- [ ] Update configs so that they can be loaded from local files, not just urls. include tab autocomplete for config file selection
+- [ ] add /settings menu for global settings within the application. for starters, allow the users to set custom colors for the application
+- [ ] update command editor so that when a user adds a template, the variables are detected and added as optional string inputs by default
+- [ ] expand configs with additional tools, create separate libraries that can be imported
+- [ ] allow the user to remove/edit the default config
+- [ ] add searchable tags to the commands so that users can add terms they might think of instead of the real command and they still get search results
+- [ ] update project readme 
+- [ ] ci workflows
+- [ ] release pipeline and builds for different architectures
+- [ ] screenshots of gui

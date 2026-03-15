@@ -204,7 +204,7 @@ func (m FormModel) View() string {
 
 	// ── Title bar ─────────────────────────────────────────────────────────
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ Command Builder " + StyleTitleVersion.Render(appVersion) + StyleResultDesc.Render("  ← Esc to go back"),
+		"⚡ Command Builder " + StyleTitleVersion.Render(AppVersion) + StyleResultDesc.Render("  ← Esc to go back"),
 	)
 	b.WriteString(title + "\n")
 

@@ -18,6 +18,7 @@ const (
 	actionDelete
 	actionExport
 	actionImport
+	actionPull
 )
 
 // ConfigScreenModel is the config management screen.
@@ -135,6 +136,19 @@ func (m ConfigScreenModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.input.Placeholder = "Config URL…"
 			return m, m.input.Focus()
 
+		case "u", "U":
+			if len(m.configs) > 0 {
+				cfg := m.configs[m.selected]
+				if cfg.SourceURL == "" {
+					m.message = StyleError.Render("Config has no source URL")
+					break
+				}
+				m.action = actionPull
+				m.input.SetValue("")
+				m.input.Placeholder = fmt.Sprintf("Re-pull %q from %s ? (yes to confirm)", cfg.Name, cfg.SourceURL)
+				return m, m.input.Focus()
+			}
+
 		case "q", "Q":
 			return m, func() tea.Msg { return backToSearchMsg{} }
 		}
@@ -231,6 +245,27 @@ func (m ConfigScreenModel) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.action = actionList
 			m.input.Blur()
+
+		case actionPull:
+			if strings.ToLower(val) != "yes" {
+				m.message = StyleResultDesc.Render("Pull cancelled")
+				m.action = actionList
+				m.input.Blur()
+				break
+			}
+			if len(m.configs) == 0 {
+				break
+			}
+			target := m.configs[m.selected]
+			cfg, err := m.mgr.PullConfig(target.Name)
+			if err != nil {
+				m.message = StyleError.Render("Pull failed: " + err.Error())
+			} else {
+				m.message = StyleInfo.Render(fmt.Sprintf("Updated config %q from %s", cfg.Name, cfg.SourceURL))
+				m.configs = m.mgr.ListConfigs()
+			}
+			m.action = actionList
+			m.input.Blur()
 		}
 		return m, nil
 	}
@@ -256,7 +291,7 @@ func (m ConfigScreenModel) View() string {
 
 	// ── Title ──────────────────────────────────────────────────────────────
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ Command Builder " + StyleTitleVersion.Render(appVersion) + "  " +
+		"⚡ Command Builder " + StyleTitleVersion.Render(AppVersion) + "  " +
 			StyleResultDesc.Render("Config Manager"),
 	)
 	b.WriteString(title + "\n")
@@ -281,6 +316,8 @@ func (m ConfigScreenModel) View() string {
 		badge := ""
 		if cfg.FilePath == "" {
 			badge = " " + StyleResultConfig.Render("[built-in]")
+		} else if cfg.SourceURL != "" {
+			badge = " " + StyleResultConfig.Render("[url]")
 		}
 		cmds := fmt.Sprintf("%d cmd(s)", len(cfg.Commands))
 		line := fmt.Sprintf("%-20s  %-30s  %s%s", cfg.Name, cfg.Description, cmds, badge)
@@ -316,6 +353,7 @@ func (m ConfigScreenModel) View() string {
 		StyleStatusKey.Render("  d") + StyleStatus.Render(" delete") +
 		StyleStatusKey.Render("  x") + StyleStatus.Render(" export") +
 		StyleStatusKey.Render("  i") + StyleStatus.Render(" import URL") +
+		StyleStatusKey.Render("  u") + StyleStatus.Render(" pull update") +
 		StyleStatusKey.Render("  Esc") + StyleStatus.Render(" back")
 	b.WriteString(StyleStatus.Copy().Width(w).Render(keys))
 
@@ -338,6 +376,12 @@ func (m ConfigScreenModel) actionPrompt() string {
 		return "Export path:"
 	case actionImport:
 		return "Import config from URL:"
+	case actionPull:
+		if len(m.configs) > 0 {
+			cfg := m.configs[m.selected]
+			return fmt.Sprintf("Re-pull %q from %s (type \"yes\"):", cfg.Name, cfg.SourceURL)
+		}
+		return "Re-pull config (type \"yes\"):"
 	}
 	return ""
 }

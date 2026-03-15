@@ -11,8 +11,6 @@ import (
 	"github.com/dwilson2547/command-builder/internal/search"
 )
 
-const appVersion = "v1.0.0"
-
 // SearchModel is the main search screen.
 type SearchModel struct {
 	mgr         *config.Manager
@@ -168,7 +166,7 @@ func (m SearchModel) View() string {
 
 	// ── Title bar ──────────────────────────────────────────────────────────
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ Command Builder " + StyleTitleVersion.Render(appVersion),
+		"⚡ Command Builder " + StyleTitleVersion.Render(AppVersion),
 	)
 	b.WriteString(title + "\n")
 

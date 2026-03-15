@@ -5,7 +5,8 @@ type Config struct {
 	Name        string    `yaml:"name"`
 	Description string    `yaml:"description"`
 	Version     string    `yaml:"version"`
-	FilePath    string    `yaml:"-"` // set at runtime, not persisted
+	SourceURL   string    `yaml:"source_url,omitempty"` // URL this config was fetched from, if any
+	FilePath    string    `yaml:"-"`                    // set at runtime, not persisted
 	Commands    []Command `yaml:"commands"`
 }
 
