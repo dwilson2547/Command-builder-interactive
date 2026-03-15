@@ -51,7 +51,7 @@ func NewApp(mgr *config.Manager) AppModel {
 	return AppModel{
 		mgr:          mgr,
 		activeScreen: screenSearch,
-		search:       NewSearchModel(mgr),
+		search:       NewSearchModel(mgr, 0, 0),
 	}
 }
 
@@ -101,7 +101,8 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case backToSearchMsg:
 		a.activeScreen = screenSearch
 		// Refresh config list in case configs changed.
-		a.search = NewSearchModel(a.mgr)
+		// Pass current terminal dimensions so the input is immediately full-width.
+		a.search = NewSearchModel(a.mgr, a.width, a.height)
 		return a, a.search.Init()
 
 	case commandConfirmedMsg:

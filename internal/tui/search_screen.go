@@ -26,15 +26,23 @@ type SearchModel struct {
 }
 
 // NewSearchModel creates a new search screen bound to the given manager.
-func NewSearchModel(mgr *config.Manager) SearchModel {
+// Pass the current terminal dimensions so the input is sized correctly
+// immediately; use 0, 0 when the size is not yet known.
+func NewSearchModel(mgr *config.Manager, w, h int) SearchModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search commands… (e.g. 'openssl print p12')"
-	ti.Width = 60
+	if w > 0 {
+		ti.Width = max(20, w-10)
+	} else {
+		ti.Width = 60
+	}
 	ti.Focus()
 
 	m := SearchModel{
-		mgr:   mgr,
-		input: ti,
+		mgr:    mgr,
+		input:  ti,
+		width:  w,
+		height: h,
 	}
 	m.results = runSearch("", mgr)
 	return m
