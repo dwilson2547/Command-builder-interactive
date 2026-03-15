@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.7.0] - 2026-03-15
+
+### New Features
+
+- **GitHub Actions CI workflow** (`.github/workflows/ci.yml`)
+  Runs automatically on every pull request targeting `main`.
+  - **Lint** — `golangci-lint` with a 5-minute timeout.
+  - **Test** — `go test -v -race -count=1 ./...`
+  - **Build** — cross-compiles for `linux/amd64` and `linux/arm64` to confirm
+    both targets build cleanly. Build job depends on lint + test passing.
+
+- **GitHub Actions release workflow** (`.github/workflows/release.yml`)
+  Runs automatically on every push to `main` (skips its own version-bump
+  commit via the `chore: bump version` message guard).
+  1. Runs the test suite.
+  2. Reads the current version from `internal/tui/version.go`, increments the
+     minor component, and writes the new version back.
+  3. Commits the change as `chore: bump version to vX.Y.Z`, creates and pushes
+     a matching git tag.
+  4. Cross-compiles `command-builder-linux-amd64` and
+     `command-builder-linux-arm64` with the new version baked in via
+     `-ldflags`.
+  5. Extracts the matching section from `docs/changelog.md` and creates a
+     GitHub Release with both binaries attached.
+
+### Notes
+
+- From this version onward, version bumps in `internal/tui/version.go` are
+  automated by the release workflow on every merge to `main`. Manual bumps
+  are still applied locally for the initial commit of each feature.
+- The `concurrency: release` group ensures only one release can run at a time.
+- `GITHUB_TOKEN` is used for all git operations; no extra secrets are required
+  unless the repo has branch-protection rules that block bot pushes.
+- The `softprops/action-gh-release@v2` action is used for creating releases.
+
+---
+
 ## [1.6.0] - 2026-03-15
 
 ### New Features

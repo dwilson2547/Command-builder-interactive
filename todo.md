@@ -4,11 +4,10 @@
 - [x] Display application version in the footer
 - [x] add /settings menu for global settings within the application. for starters, allow the users to set custom colors for the application
 - [x] allow the user to remove/edit the default config
+- [x] github actions ci cd pipelines, run tests, build, and lint on pull request, when merged into main increment the application version and release the application. build binaries for arm64 and linux x64 for the release and create a tag of the release version as well
+- [ ] add searchable tags to the commands so that users can add terms they might think of instead of the real command and they still get search results
 - [ ] update command editor so that when a user adds a template, the variables are detected and added as optional string inputs by default
 - [ ] expand configs with additional tools, create separate libraries that can be imported
-- [ ] add searchable tags to the commands so that users can add terms they might think of instead of the real command and they still get search results
-- [ ] ci workflows
-- [ ] release pipeline and builds for different architectures
 - [ ] screenshots of gui
 - [ ] Add ascii art header to the application, name and color should be customizable in /settings menu
 - [x] fix footer styling, this is the current:
