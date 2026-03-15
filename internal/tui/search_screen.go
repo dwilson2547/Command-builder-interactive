@@ -30,6 +30,7 @@ func NewSearchModel(mgr *config.Manager) SearchModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search commands… (e.g. 'openssl print p12')"
 	ti.Width = 60
+	ti.Focus()
 
 	m := SearchModel{
 		mgr:   mgr,
@@ -44,9 +45,9 @@ func runSearch(query string, mgr *config.Manager) []search.SearchResult {
 	return search.Search(query, mgr.ListConfigs(), filter)
 }
 
-// Init satisfies tea.Model – focus the search input immediately.
+// Init satisfies tea.Model – start the cursor blink animation.
 func (m SearchModel) Init() tea.Cmd {
-	return m.input.Focus()
+	return textinput.Blink
 }
 
 // Update satisfies tea.Model.
@@ -127,12 +128,14 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Delegate to text input.
+	prevQuery := m.input.Value()
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 
-	// Rerun search on every keystroke.
+	// Rerun search only when the query actually changes (not on blink ticks etc).
+	// Exceptions: /config and /import are handled on Enter only.
 	query := m.input.Value()
-	if !strings.HasPrefix(query, "/config") && !strings.HasPrefix(query, "/import") {
+	if query != prevQuery && !strings.HasPrefix(query, "/config") && !strings.HasPrefix(query, "/import") {
 		m.results = runSearch(query, m.mgr)
 		m.selectedIdx = 0
 		m.scrollTop = 0
@@ -179,8 +182,8 @@ func (m SearchModel) View() string {
 	b.WriteString(sep + "\n")
 
 	// ── Results list ───────────────────────────────────────────────────────
-	// Reserve rows for title, input, hint, sep, status bar.
-	reserved := 6
+	// Reserve rows: title(1) + input-border(3) + hint(1) + sep(1) + status(1) = 7
+	reserved := 7
 	if m.message != "" {
 		reserved++
 	}
@@ -193,19 +196,23 @@ func (m SearchModel) View() string {
 	end := min(start+visRows, len(m.results))
 
 	if len(m.results) == 0 {
-		b.WriteString(StyleResultDesc.Padding(1, 2).Render("No results. Try a different query."))
-	}
-
-	for i := start; i < end; i++ {
-		r := m.results[i]
-		line := m.renderResult(r, i == m.selectedIdx, w)
-		b.WriteString(line + "\n")
-	}
-
-	// Pad remaining space.
-	rendered := end - start
-	for i := rendered; i < visRows; i++ {
-		b.WriteString("\n")
+		// Write the "no results" notice as the first line of the results area,
+		// then pad the remainder so the total results area stays exactly visRows.
+		b.WriteString(StyleResultDesc.Padding(0, 2).Render("No results. Try a different query.") + "\n")
+		for i := 1; i < visRows; i++ {
+			b.WriteString("\n")
+		}
+	} else {
+		for i := start; i < end; i++ {
+			r := m.results[i]
+			line := m.renderResult(r, i == m.selectedIdx, w)
+			b.WriteString(line + "\n")
+		}
+		// Pad remaining space.
+		rendered := end - start
+		for i := rendered; i < visRows; i++ {
+			b.WriteString("\n")
+		}
 	}
 
 	// ── Status bar ─────────────────────────────────────────────────────────
