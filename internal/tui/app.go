@@ -36,27 +36,33 @@ const (
 	screenForm
 	screenConfig
 	screenEdit
+	screenSettings
 )
 
 // AppModel is the root bubbletea model. It routes messages to the active screen.
 type AppModel struct {
-	mgr          *config.Manager
-	activeScreen int
-	search       SearchModel
-	form         FormModel
-	cfgScreen    ConfigScreenModel
-	editScreen   EditScreenModel
-	finalCmd     string
-	width        int
-	height       int
+	mgr             *config.Manager
+	currentSettings config.AppSettings
+	activeScreen    int
+	search          SearchModel
+	form            FormModel
+	cfgScreen       ConfigScreenModel
+	editScreen      EditScreenModel
+	settingsScreen  SettingsScreenModel
+	finalCmd        string
+	width           int
+	height          int
 }
 
 // NewApp creates the root application model.
-func NewApp(mgr *config.Manager) AppModel {
+// settings should be the already-loaded (and already applied via ApplyTheme)
+// user settings so the settings screen reflects the correct initial values.
+func NewApp(mgr *config.Manager, settings config.AppSettings) AppModel {
 	return AppModel{
-		mgr:          mgr,
-		activeScreen: screenSearch,
-		search:       NewSearchModel(mgr, 0, 0),
+		mgr:             mgr,
+		currentSettings: settings,
+		activeScreen:    screenSearch,
+		search:          NewSearchModel(mgr, 0, 0),
 	}
 }
 
@@ -96,6 +102,11 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.editScreen = es.(EditScreenModel)
 			cmds = append(cmds, c)
 		}
+		if a.activeScreen == screenSettings {
+			ss, c := a.settingsScreen.Update(msg)
+			a.settingsScreen = ss.(SettingsScreenModel)
+			cmds = append(cmds, c)
+		}
 		return a, tea.Batch(cmds...)
 
 	case selectOptionMsg:
@@ -112,6 +123,19 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.editScreen = NewEditScreenModel(a.mgr, msg.cfg, a.width, a.height)
 		a.activeScreen = screenEdit
 		return a, a.editScreen.Init()
+
+	case goToSettingsMsg:
+		a.settingsScreen = NewSettingsScreenModel(a.currentSettings, a.width, a.height)
+		a.activeScreen = screenSettings
+		return a, a.settingsScreen.Init()
+
+	case themeChangedMsg:
+		// Sync the updated settings from the settings screen back into AppModel
+		// so future navigations to /settings preserve the current state.
+		if a.activeScreen == screenSettings {
+			a.currentSettings = a.settingsScreen.settings
+		}
+		return a, nil
 
 	case backToSearchMsg:
 		a.activeScreen = screenSearch
@@ -144,6 +168,10 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var m tea.Model
 		m, cmd = a.editScreen.Update(msg)
 		a.editScreen = m.(EditScreenModel)
+	case screenSettings:
+		var m tea.Model
+		m, cmd = a.settingsScreen.Update(msg)
+		a.settingsScreen = m.(SettingsScreenModel)
 	}
 	return a, cmd
 }
@@ -157,6 +185,8 @@ func (a AppModel) View() string {
 		return a.cfgScreen.View()
 	case screenEdit:
 		return a.editScreen.View()
+	case screenSettings:
+		return a.settingsScreen.View()
 	default:
 		return a.search.View()
 	}

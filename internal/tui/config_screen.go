@@ -108,13 +108,13 @@ func (m ConfigScreenModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "d", "D":
 			if len(m.configs) > 0 {
 				cfg := m.configs[m.selected]
-				if cfg.Name == "default" {
-					m.message = StyleError.Render("Cannot delete the built-in default config")
-					break
-				}
 				m.action = actionDelete
 				m.input.SetValue("")
-				m.input.Placeholder = fmt.Sprintf("Type %q to confirm deletion", cfg.Name)
+				if cfg.FilePath == "" {
+					m.input.Placeholder = fmt.Sprintf("Type %q to confirm deletion (built-in — will be hidden on next launch)", cfg.Name)
+				} else {
+					m.input.Placeholder = fmt.Sprintf("Type %q to confirm deletion", cfg.Name)
+				}
 				return m, m.input.Focus()
 			}
 
@@ -130,8 +130,12 @@ func (m ConfigScreenModel) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if len(m.configs) > 0 {
 				cfg := m.configs[m.selected]
 				if cfg.FilePath == "" {
-					m.message = StyleError.Render("Cannot edit the built-in default config")
-					break
+					// Promote the embedded default to a real file before editing.
+					if err := m.mgr.PromoteDefaultConfig(cfg); err != nil {
+						m.message = StyleError.Render("Could not save default config to disk: " + err.Error())
+						break
+					}
+					m.message = StyleInfo.Render("Default config saved to disk – opening editor")
 				}
 				return m, func() tea.Msg { return goToEditMsg{cfg: cfg} }
 			}
@@ -509,7 +513,7 @@ func (m ConfigScreenModel) View() string {
 		StyleStatusKey.Render("  f") + StyleStatus.Render(" import file") +
 		StyleStatusKey.Render("  u") + StyleStatus.Render(" pull update") +
 		StyleStatusKey.Render("  Esc") + StyleStatus.Render(" back")
-	b.WriteString(StyleStatus.Copy().Width(w).Render(keys))
+	b.WriteString(renderFooter(w, keys, footerVersion()))
 
 	return b.String()
 }

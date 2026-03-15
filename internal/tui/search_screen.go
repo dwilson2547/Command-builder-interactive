@@ -75,10 +75,13 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyEnter:
-			// Handle config/import commands.
+			// Handle config/import/settings commands.
 			query := strings.TrimSpace(m.input.Value())
 			if strings.HasPrefix(query, "/config") {
 				return m, func() tea.Msg { return goToConfigMsg{} }
+			}
+			if strings.HasPrefix(query, "/settings") {
+				return m, func() tea.Msg { return goToSettingsMsg{} }
 			}
 			if strings.HasPrefix(query, "/import ") {
 				target := strings.TrimSpace(strings.TrimPrefix(query, "/import "))
@@ -212,7 +215,7 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.completionBase = ""
 		}
 		// Rerun search only for non-special queries.
-		if !strings.HasPrefix(query, "/config") && !strings.HasPrefix(query, "/import") {
+		if !strings.HasPrefix(query, "/config") && !strings.HasPrefix(query, "/import") && !strings.HasPrefix(query, "/settings") {
 			m.results = runSearch(query, m.mgr)
 			m.selectedIdx = 0
 			m.scrollTop = 0
@@ -248,7 +251,7 @@ func (m SearchModel) View() string {
 
 	// ── Hint line ──────────────────────────────────────────────────────────
 	inImport := strings.HasPrefix(m.input.Value(), "/import ")
-	hintText := " ↑↓ navigate · Enter select · /default · /all · /<config> · /import <url or path> · Ctrl+C quit"
+	hintText := " ↑↓ navigate · Enter select · /default · /all · /<config> · /import <url or path> · /settings · Ctrl+C quit"
 	if inImport {
 		hintText = " Enter to import · Tab to autocomplete path · Esc clears"
 	}
@@ -330,16 +333,9 @@ func (m SearchModel) View() string {
 	}
 
 	// ── Status bar ─────────────────────────────────────────────────────────
-	statusLeft := fmt.Sprintf(" %d result(s)", len(m.results))
-	statusRight := " Ctrl+C quit "
-	gap := w - len(statusLeft) - len(statusRight)
-	if gap < 0 {
-		gap = 0
-	}
-	status := StyleStatus.Copy().Width(w).Render(
-		statusLeft + strings.Repeat(" ", gap) + statusRight,
-	)
-	b.WriteString(status)
+	statusLeft := StyleStatus.Render(fmt.Sprintf(" %d result(s)", len(m.results)))
+	statusRight := StyleStatus.Render(" Ctrl+C quit") + footerVersion()
+	b.WriteString(renderFooter(w, statusLeft, statusRight))
 
 	return b.String()
 }

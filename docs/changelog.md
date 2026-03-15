@@ -1,5 +1,104 @@
 # Changelog
 
+## [1.6.0] - 2026-03-15
+
+### New Features
+
+- **Edit the built-in default config**
+  Pressing `e` on the built-in default in the Config Manager now works.
+  On first edit the embedded default is "promoted" to a real file at
+  `~/.config/command-builder/configs/default.yaml` before the editor
+  opens. Subsequent launches load that file instead of the embedded
+  version, so edits are preserved across restarts.
+
+- **Delete the built-in default config**
+  Pressing `d` on the built-in default and confirming now removes it
+  from the current session. A tombstone marker file
+  (`~/.config/command-builder/configs/.default-hidden`) is written so
+  the embedded default is not reloaded on the next launch. The tombstone
+  can be deleted manually to restore the embedded default.
+
+- **`Manager.PromoteDefaultConfig`**
+  New method in `internal/config` that saves an embedded (file-path-less)
+  config to the user's config directory and updates its `FilePath` in place.
+
+### Changes
+
+- `Manager.DeleteConfig` now writes the tombstone file when deleting the
+  embedded built-in config instead of silently succeeding without any
+  persistent effect.
+- `Manager.NewManager` startup order changed: user configs (including a
+  user-saved `default.yaml`) are loaded first, and the embedded default is
+  only loaded when no user-backed version exists and the tombstone is absent.
+  Previously user configs named `"default"` were silently skipped.
+
+---
+
+## [1.5.0] - 2026-03-15
+
+### New Features
+
+- **`/settings` menu for global application settings**
+  Typing `/settings` in the search bar (or pressing Enter while the query
+  starts with `/settings`) opens a new full-screen Settings panel. It is
+  integrated into the same screen-routing system as the Config Manager and
+  Command Editor.
+
+- **Customisable colour palette**
+  The Settings screen exposes all nine theme colours (Primary, Accent,
+  Success, Warning, Error, Muted, Text, Selected BG) as editable entries.
+  Each row shows a coloured swatch, the current value, and a short
+  description of where that colour is used.
+
+  - `↑`/`↓` — navigate entries
+  - `e` or `Enter` — enter edit mode for the selected colour; accepts ANSI
+    terminal codes (`0`–`255`) or CSS hex values (`#rrggbb`)
+  - `r` — reset the selected colour to its built-in default
+  - `R` — reset the entire palette to built-in defaults
+  - `Esc` — return to the search screen
+
+- **Persistent colour settings**
+  Colour choices are saved to `~/.config/command-builder/settings.json` and
+  loaded automatically at startup. The palette is applied immediately on every
+  colour change — no restart required.
+
+- **`ApplyTheme` API in `internal/tui`**
+  `styles.go` is refactored so that every Lipgloss style variable is
+  reassigned by `ApplyTheme(config.AppSettings)`. Previously styles were
+  plain `var` initialisers run once at package init; they are now rebuilt
+  whenever the user changes a colour, ensuring every screen reflects the
+  updated palette on its very next render.
+
+- **`config.AppSettings` type**
+  `internal/config/settings.go` introduces `AppSettings`, `DefaultSettings()`,
+  `LoadSettings()`, and `SaveSettings()` — a self-contained layer for
+  persisting non-config user preferences independently of the YAML config
+  files.
+
+---
+
+## [1.4.0] - 2026-03-15
+
+### New Features
+
+- **Application version displayed in every screen's footer**
+  All four screens (search, form, config manager, editor) now show `AppVersion`
+  right-aligned in the status bar, rendered with the muted title-version style.
+  The version badge is produced by a new shared `footerVersion()` helper.
+
+### Bug Fixes
+
+- **Footer wrapping on all screens**
+  `StyleStatus` has `Padding(0,1)`, meaning Lipgloss's `Width(w)` sets the
+  *content* area to `w` characters and then adds 1 space of padding on each
+  side — yielding a total of `w+2` columns, which wrapped on any terminal at
+  exactly the content width. Fixed by a new `renderFooter(w, left, right)`
+  helper in `internal/tui/footer.go` that targets `Width(w-2)` and uses
+  `lipgloss.Width()` (ANSI-aware) for the gap calculation, ensuring the status
+  bar fits exactly `w` columns on every screen.
+
+---
+
 ## [1.3.0] - 2026-03-15
 
 ### New Features

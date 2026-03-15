@@ -595,7 +595,7 @@ func (m EditScreenModel) View() string {
 		}
 		keys += StyleStatusKey.Render("  Esc") + StyleStatus.Render(" back")
 	}
-	b.WriteString(StyleStatus.Copy().Width(w).Render(keys))
+	b.WriteString(renderFooter(w, keys, footerVersion()))
 
 	return b.String()
 }

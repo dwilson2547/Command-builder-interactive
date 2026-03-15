@@ -16,29 +16,43 @@ type Manager struct {
 	configs []*Config
 }
 
+// defaultTombstonePath returns the path to the marker file that suppresses
+// the embedded default config on subsequent launches.
+func defaultTombstonePath() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "command-builder", "configs", ".default-hidden")
+}
+
 // NewManager creates a Manager, loading the embedded default config and any
 // user configs from ~/.config/command-builder/configs/.
 func NewManager(defaultData []byte) (*Manager, error) {
 	m := &Manager{}
 
-	// Load the embedded default config.
-	if len(defaultData) > 0 {
-		cfg, err := LoadConfigFromBytes(defaultData)
-		if err == nil {
-			cfg.FilePath = "" // embedded – no file path
-			m.configs = append(m.configs, cfg)
+	_ = EnsureConfigDir()
+
+	// Load user configs first so we can detect a promoted / user-overridden
+	// default.yaml before deciding whether to load the embedded default.
+	userDefaultLoaded := false
+	if userCfgs, err := LoadAllConfigs(GetConfigDir()); err == nil {
+		for _, uc := range userCfgs {
+			m.configs = append(m.configs, uc)
+			if uc.Name == "default" {
+				userDefaultLoaded = true
+			}
 		}
 	}
 
-	// Load user configs.
-	if err := EnsureConfigDir(); err == nil {
-		userCfgs, _ := LoadAllConfigs(GetConfigDir())
-		for _, uc := range userCfgs {
-			// Don't duplicate a config whose name matches the default.
-			if uc.Name == "default" {
-				continue
-			}
-			m.configs = append(m.configs, uc)
+	// Load the embedded default config unless:
+	//   (a) a user file-backed "default" config is already loaded, or
+	//   (b) the user has explicitly deleted it (tombstone present).
+	_, tombstoneErr := os.Stat(defaultTombstonePath())
+	tombstoneExists := tombstoneErr == nil
+	if len(defaultData) > 0 && !userDefaultLoaded && !tombstoneExists {
+		cfg, err := LoadConfigFromBytes(defaultData)
+		if err == nil {
+			cfg.FilePath = "" // embedded – no file path
+			// Prepend so the built-in default is always first in the list.
+			m.configs = append([]*Config{cfg}, m.configs...)
 		}
 	}
 
@@ -91,6 +105,9 @@ func (m *Manager) UpdateConfig(cfg *Config) error {
 }
 
 // DeleteConfig removes a config by name, deleting its file if it has one.
+// If the config is the embedded built-in (FilePath == ""), a tombstone marker
+// is written to the config directory so the embedded default is not reloaded
+// on the next application launch.
 func (m *Manager) DeleteConfig(name string) error {
 	for i, c := range m.configs {
 		if c.Name == name {
@@ -98,12 +115,34 @@ func (m *Manager) DeleteConfig(name string) error {
 				if err := os.Remove(c.FilePath); err != nil && !os.IsNotExist(err) {
 					return err
 				}
+			} else {
+				// Built-in embedded config: write a tombstone so it stays hidden
+				// on the next launch. Ignore write errors (non-fatal).
+				_ = os.WriteFile(defaultTombstonePath(), []byte{}, 0o644)
 			}
 			m.configs = append(m.configs[:i], m.configs[i+1:]...)
 			return nil
 		}
 	}
 	return fmt.Errorf("config %q not found", name)
+}
+
+// PromoteDefaultConfig saves an embedded (file-path-less) config to the user's
+// config directory so it can be edited and persisted. The config's FilePath is
+// updated in place. If the config already has a FilePath this is a no-op.
+func (m *Manager) PromoteDefaultConfig(cfg *Config) error {
+	if cfg.FilePath != "" {
+		return nil // already file-backed
+	}
+	if err := EnsureConfigDir(); err != nil {
+		return err
+	}
+	path := filepath.Join(GetConfigDir(), sanitizeName(cfg.Name)+".yaml")
+	if err := SaveConfig(cfg, path); err != nil {
+		return err
+	}
+	cfg.FilePath = path
+	return nil
 }
 
 // ExportConfig copies a config's YAML to the given destination path.

@@ -279,8 +279,7 @@ func (m FormModel) View() string {
 			statusMsg = StyleStatus.Render(" Required: ") + StyleError.Render(strings.Join(missing, ", "))
 		}
 	}
-	status := StyleStatus.Copy().Width(w).Render(statusMsg)
-	b.WriteString(status)
+	b.WriteString(renderFooter(w, statusMsg, footerVersion()))
 
 	return b.String()
 }

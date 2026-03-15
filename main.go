@@ -20,7 +20,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := tui.NewApp(mgr)
+	// Load user settings (falls back to built-in defaults gracefully).
+	settings := config.LoadSettings()
+	// Apply the palette so all styles reflect user colours from the first render.
+	tui.ApplyTheme(settings)
+
+	app := tui.NewApp(mgr, settings)
 	p := tea.NewProgram(app, tea.WithAltScreen())
 
 	finalModel, err := p.Run()
