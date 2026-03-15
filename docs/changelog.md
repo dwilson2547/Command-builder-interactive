@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.8.0] - 2026-03-15
+
+### New Features
+
+- **Searchable tags on command options**
+  Each `Option` in a config now supports an optional `tags` list — a set of
+  alternate terms or aliases a user might think of instead of the command's
+  real name. Tags are matched at search time with the same priority as option
+  names (exact match scores 80, prefix match 50, substring match 25), so
+  relevant options surface even when the query doesn't match the name or
+  description directly.
+
+  **YAML format:**
+  ```yaml
+  options:
+    - name: "print-p12"
+      description: "Print P12 keystore content"
+      template: "openssl pkcs12 -info -in {{input_file}} -passin pass:{{password}}"
+      tags: ["pfx", "certificate", "inspect", "keystore"]
+      inputs: ...
+  ```
+
+- **Tag editing in the command editor**
+  The Option edit form (`e` / `n` while at the Options level of the editor
+  screen) now includes a **Tags** field. Enter tags as a comma-separated list;
+  they are split, trimmed and stored when the form is saved with `Ctrl+S`.
+  Existing tags are pre-populated when editing an option.
+
+- **Tag display in the option list**
+  When an option has tags, they are shown in square brackets after the
+  template column in the Options browse list for quick reference.
+
+- **Example tags in `configs/default.yaml`**
+  Seven options across `openssl`, `tar`, `grep`, and `docker` commands have
+  been annotated with example tags to demonstrate the feature out of the box.
+
+---
+
 ## [1.7.0] - 2026-03-15
 
 ### New Features

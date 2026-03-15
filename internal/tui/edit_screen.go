@@ -270,18 +270,19 @@ func (m EditScreenModel) openForm(isNew bool) (EditScreenModel, tea.Cmd) {
 		m.formFields = makeEditInputs([]string{name, desc}, inputW)
 
 	case editLevelOptions:
-		name, desc, tmpl := "", "", ""
+		name, desc, tmpl, tags := "", "", "", ""
 		if !isNew && m.cmdIdx < len(m.cfg.Commands) {
 			cmd := m.cfg.Commands[m.cmdIdx]
 			if m.optIdx < len(cmd.Options) {
 				name = cmd.Options[m.optIdx].Name
 				desc = cmd.Options[m.optIdx].Description
 				tmpl = cmd.Options[m.optIdx].Template
+				tags = strings.Join(cmd.Options[m.optIdx].Tags, ", ")
 			}
 		}
 		m.formTitle = action + " Option"
-		m.formLabels = []string{"Name", "Description", "Template"}
-		m.formFields = makeEditInputs([]string{name, desc, tmpl}, inputW)
+		m.formLabels = []string{"Name", "Description", "Template", "Tags  (comma-separated search aliases)"}
+		m.formFields = makeEditInputs([]string{name, desc, tmpl, tags}, inputW)
 
 	case editLevelInputs:
 		var name, typ, desc, req, def string
@@ -344,24 +345,28 @@ func (m EditScreenModel) saveForm() (EditScreenModel, error) {
 		name := strings.TrimSpace(m.formFields[0].Value())
 		desc := strings.TrimSpace(m.formFields[1].Value())
 		tmpl := strings.TrimSpace(m.formFields[2].Value())
+		tagsRaw := strings.TrimSpace(m.formFields[3].Value())
 		if name == "" {
 			return m, fmt.Errorf("name cannot be empty")
 		}
 		if m.cmdIdx >= len(m.cfg.Commands) {
 			return m, fmt.Errorf("no command selected")
 		}
+		parsedTags := parseTags(tagsRaw)
 		cmd := &m.cfg.Commands[m.cmdIdx]
 		if m.formIsNew {
 			cmd.Options = append(cmd.Options, config.Option{
 				Name:        name,
 				Description: desc,
 				Template:    tmpl,
+				Tags:        parsedTags,
 			})
 			m.optIdx = len(cmd.Options) - 1
 		} else if m.optIdx < len(cmd.Options) {
 			cmd.Options[m.optIdx].Name = name
 			cmd.Options[m.optIdx].Description = desc
 			cmd.Options[m.optIdx].Template = tmpl
+			cmd.Options[m.optIdx].Tags = parsedTags
 		}
 
 	case editLevelInputs:
@@ -508,6 +513,22 @@ func makeEditInputs(values []string, width int) []textinput.Model {
 	return inputs
 }
 
+// parseTags splits a comma-separated tag string into a trimmed, non-empty slice.
+func parseTags(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	var tags []string
+	for _, p := range parts {
+		t := strings.TrimSpace(p)
+		if t != "" {
+			tags = append(tags, t)
+		}
+	}
+	return tags
+}
+
 // ---- View -------------------------------------------------------------------
 
 func (m EditScreenModel) View() string {
@@ -621,8 +642,12 @@ func (m EditScreenModel) renderList(w, h int) string {
 			cmd := m.cfg.Commands[m.cmdIdx]
 			b.WriteString(StyleConfigHeader.Render("Options in "+cmd.Name) + "\n")
 			for _, opt := range cmd.Options {
+				tagStr := ""
+				if len(opt.Tags) > 0 {
+					tagStr = "  [" + strings.Join(opt.Tags, ", ") + "]"
+				}
 				rows = append(rows, row{
-					fmt.Sprintf("%-22s  %-28s  %s", opt.Name, opt.Description, opt.Template),
+					fmt.Sprintf("%-22s  %-28s  %s", opt.Name, opt.Description, opt.Template) + tagStr,
 				})
 			}
 		}

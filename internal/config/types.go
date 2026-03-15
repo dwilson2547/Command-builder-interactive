@@ -19,10 +19,11 @@ type Command struct {
 
 // Option represents a specific use-case for a command.
 type Option struct {
-	Name        string  `yaml:"name"`
-	Description string  `yaml:"description"`
-	Template    string  `yaml:"template"`
-	Inputs      []Input `yaml:"inputs"`
+	Name        string   `yaml:"name"`
+	Description string   `yaml:"description"`
+	Template    string   `yaml:"template"`
+	Tags        []string `yaml:"tags,omitempty"` // searchable aliases/keywords
+	Inputs      []Input  `yaml:"inputs"`
 }
 
 // Input represents a user-fillable field in an option template.

@@ -8,6 +8,7 @@ commands:
       - name: "print-p12"
         description: "Print P12 keystore content"
         template: "openssl pkcs12 -info -in {{input_file}} -passin pass:{{password}}"
+        tags: ["pfx", "certificate", "inspect", "keystore", "pkcs12"]
         inputs:
           - name: "input_file"
             type: "file"
@@ -21,6 +22,7 @@ commands:
       - name: "generate-rsa-key"
         description: "Generate RSA private key"
         template: "openssl genrsa -out {{output_file}} {{key_size}}"
+        tags: ["keygen", "rsa", "private key", "create key"]
         inputs:
           - name: "output_file"
             type: "file"
@@ -130,6 +132,7 @@ commands:
       - name: "create-tarball"
         description: "Create tar archive"
         template: "tar -cvf {{output_file}} {{source}}"
+        tags: ["archive", "pack", "bundle"]
         inputs:
           - name: "output_file"
             type: "file"
@@ -142,6 +145,7 @@ commands:
       - name: "create-gzip"
         description: "Create gzip compressed archive"
         template: "tar -czvf {{output_file}} {{source}}"
+        tags: ["compress", "zip", "gz", "pack", "archive"]
         inputs:
           - name: "output_file"
             type: "file"
@@ -503,6 +507,7 @@ commands:
       - name: "search-recursive"
         description: "Recursively search in directory"
         template: "grep -rn \"{{pattern}}\" {{directory}}"
+        tags: ["find text", "text search", "look up", "rgrep"]
         inputs:
           - name: "pattern"
             type: "string"
@@ -554,6 +559,7 @@ commands:
       - name: "build-image"
         description: "Build Docker image from Dockerfile"
         template: "docker build -t {{image_name}}:{{tag}} -f {{dockerfile}} {{context}}"
+        tags: ["build", "compile", "dockerfile", "create image", "docker build"]
         inputs:
           - name: "image_name"
             type: "string"
@@ -577,6 +583,7 @@ commands:
       - name: "run-container"
         description: "Run a Docker container"
         template: "docker run -d --name {{container_name}} -p {{host_port}}:{{container_port}} {{image_name}}:{{tag}}"
+        tags: ["start", "launch", "deploy", "spin up", "container"]
         inputs:
           - name: "container_name"
             type: "string"
