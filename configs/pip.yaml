@@ -1,0 +1,334 @@
+name: "pip"
+description: "Python package installer: install, uninstall, upgrade, list, inspect, requirements, virtualenv"
+version: "1.0.0"
+commands:
+  - name: "packages"
+    description: "Install, uninstall and upgrade packages"
+    options:
+      - name: "install"
+        description: "Install one or more packages"
+        template: "pip install{{upgrade}}{{no_deps}}{{pre}}{{quiet}} {{packages}}"
+        tags: ["add", "download", "get package"]
+        inputs:
+          - name: "packages"
+            type: "string"
+            description: "Package name(s), e.g. requests or 'requests==2.31.0 flask'"
+            required: true
+          - name: "upgrade"
+            type: "flag"
+            description: "Upgrade to the latest version if already installed (-U)"
+            required: false
+            default: " -U"
+          - name: "no_deps"
+            type: "flag"
+            description: "Do not install package dependencies (--no-deps)"
+            required: false
+            default: " --no-deps"
+          - name: "pre"
+            type: "flag"
+            description: "Include pre-release and development versions (--pre)"
+            required: false
+            default: " --pre"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "install-from-file"
+        description: "Install packages from a requirements file"
+        template: "pip install{{upgrade}}{{no_deps}}{{quiet}} -r {{requirements_file}}"
+        tags: ["requirements.txt", "bulk install", "restore"]
+        inputs:
+          - name: "requirements_file"
+            type: "file"
+            description: "Requirements file path"
+            required: true
+            default: "requirements.txt"
+          - name: "upgrade"
+            type: "flag"
+            description: "Upgrade packages to latest versions (-U)"
+            required: false
+            default: " -U"
+          - name: "no_deps"
+            type: "flag"
+            description: "Do not install dependencies (--no-deps)"
+            required: false
+            default: " --no-deps"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "install-editable"
+        description: "Install a local project in editable (development) mode"
+        template: "pip install -e {{path}}"
+        tags: ["dev install", "editable", "local package", "develop"]
+        inputs:
+          - name: "path"
+            type: "dir"
+            description: "Path to the project directory containing setup.py / pyproject.toml"
+            required: true
+            default: "."
+
+      - name: "uninstall"
+        description: "Uninstall one or more packages"
+        template: "pip uninstall{{yes}} {{packages}}"
+        tags: ["remove", "delete package"]
+        inputs:
+          - name: "packages"
+            type: "string"
+            description: "Package name(s) to uninstall (space-separated)"
+            required: true
+            sub_command: "pip list --format=columns 2>/dev/null | tail -n +3 | awk '{print $1\",\"$1\" (\"$2\")\"}'"
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm uninstall without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "upgrade"
+        description: "Upgrade a specific package to the latest version"
+        template: "pip install -U {{package}}"
+        tags: ["update", "latest"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name to upgrade"
+            required: true
+            sub_command: "pip list --format=columns 2>/dev/null | tail -n +3 | awk '{print $1\",\"$1\" (\"$2\")\"}'"
+
+      - name: "upgrade-all"
+        description: "Upgrade all outdated packages"
+        template: "pip list --outdated --format=freeze 2>/dev/null | grep -v '^\\-e' | cut -d= -f1 | xargs -n1 pip install -U"
+        tags: ["update all", "outdated", "latest"]
+        inputs: []
+
+  - name: "inspect"
+    description: "List and inspect installed packages"
+    options:
+      - name: "list"
+        description: "List all installed packages"
+        template: "pip list{{outdated}}{{uptodate}}{{format}}"
+        tags: ["show packages", "installed"]
+        inputs:
+          - name: "outdated"
+            type: "flag"
+            description: "Show only outdated packages (--outdated)"
+            required: false
+            default: " --outdated"
+          - name: "uptodate"
+            type: "flag"
+            description: "Show only up-to-date packages (--uptodate)"
+            required: false
+            default: " --uptodate"
+          - name: "format"
+            type: "flag"
+            description: "JSON output format (--format=json)"
+            required: false
+            default: " --format=json"
+
+      - name: "show"
+        description: "Show metadata for an installed package"
+        template: "pip show{{files}} {{package}}"
+        tags: ["info", "details", "metadata", "version"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name"
+            required: true
+            sub_command: "pip list --format=columns 2>/dev/null | tail -n +3 | awk '{print $1\",\"$1\" (\"$2\")\"}'"
+          - name: "files"
+            type: "flag"
+            description: "Show list of installed files (-f)"
+            required: false
+            default: " -f"
+
+      - name: "check"
+        description: "Verify installed packages have compatible dependencies"
+        template: "pip check"
+        tags: ["verify", "conflicts", "compatibility"]
+        inputs: []
+
+      - name: "outdated"
+        description: "List packages that have newer versions available"
+        template: "pip list --outdated --format={{format}}"
+        tags: ["updates available", "stale"]
+        inputs:
+          - name: "format"
+            type: "string"
+            description: "Output format: columns, freeze, or json"
+            required: true
+            default: "columns"
+
+  - name: "requirements"
+    description: "Freeze and manage requirements files"
+    options:
+      - name: "freeze"
+        description: "Output installed packages in requirements format"
+        template: "pip freeze{{local}} {{exclude_editable}} > {{output_file}}"
+        tags: ["export", "lock", "snapshot"]
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "File to write requirements to"
+            required: true
+            default: "requirements.txt"
+          - name: "local"
+            type: "flag"
+            description: "Only include locally-installed packages, not globally inherited (--local)"
+            required: false
+            default: " --local"
+          - name: "exclude_editable"
+            type: "flag"
+            description: "Exclude editable installs (--exclude-editable)"
+            required: false
+            default: " --exclude-editable"
+
+      - name: "freeze-to-stdout"
+        description: "Print installed packages in requirements format to stdout"
+        template: "pip freeze{{local}}{{exclude_editable}}"
+        tags: ["export", "print requirements"]
+        inputs:
+          - name: "local"
+            type: "flag"
+            description: "Only locally-installed packages (--local)"
+            required: false
+            default: " --local"
+          - name: "exclude_editable"
+            type: "flag"
+            description: "Exclude editable installs (--exclude-editable)"
+            required: false
+            default: " --exclude-editable"
+
+  - name: "index"
+    description: "Search and query the package index"
+    options:
+      - name: "search"
+        description: "Search PyPI for packages matching a query"
+        template: "pip index versions {{package}}"
+        tags: ["find", "pypi", "versions", "available"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name to look up available versions for"
+            required: true
+
+      - name: "download"
+        description: "Download a package without installing it"
+        template: "pip download{{no_deps}}{{platform}} {{package}} -d {{dest_dir}}"
+        tags: ["fetch", "offline", "cache"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name (optionally with version, e.g. requests==2.31.0)"
+            required: true
+          - name: "dest_dir"
+            type: "dir"
+            description: "Directory to save downloaded files"
+            required: true
+            default: "./pip-downloads"
+          - name: "no_deps"
+            type: "flag"
+            description: "Do not download dependencies (--no-deps)"
+            required: false
+            default: " --no-deps"
+          - name: "platform"
+            type: "string"
+            description: "Target platform, e.g. --platform linux_x86_64 (leave blank for current)"
+            required: false
+
+  - name: "cache"
+    description: "Manage the pip download and wheel cache"
+    options:
+      - name: "info"
+        description: "Show pip cache directory and size information"
+        template: "pip cache info"
+        tags: ["cache size", "storage"]
+        inputs: []
+
+      - name: "list"
+        description: "List files in the pip cache"
+        template: "pip cache list {{pattern}}"
+        tags: ["cached packages", "wheel cache"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Package name pattern to filter (leave blank for all)"
+            required: false
+
+      - name: "purge"
+        description: "Remove all items from the pip cache"
+        template: "pip cache purge"
+        tags: ["clear cache", "clean"]
+        inputs: []
+
+      - name: "remove"
+        description: "Remove one or more packages from the cache"
+        template: "pip cache remove {{pattern}}"
+        tags: ["delete cached", "evict"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Package name or glob pattern to remove from cache"
+            required: true
+
+  - name: "config"
+    description: "Read and write pip configuration"
+    options:
+      - name: "list"
+        description: "List active pip configuration"
+        template: "pip config list{{verbose}}"
+        tags: ["settings", "show config"]
+        inputs:
+          - name: "verbose"
+            type: "flag"
+            description: "Show config file paths alongside values (-v)"
+            required: false
+            default: " -v"
+
+      - name: "set"
+        description: "Set a pip configuration value"
+        template: "pip config set {{key}} {{value}}"
+        tags: ["configure", "settings"]
+        inputs:
+          - name: "key"
+            type: "string"
+            description: "Config key, e.g. global.index-url or install.trusted-host"
+            required: true
+          - name: "value"
+            type: "string"
+            description: "Value to set"
+            required: true
+
+      - name: "unset"
+        description: "Unset (remove) a pip configuration value"
+        template: "pip config unset {{key}}"
+        tags: ["remove config", "reset setting"]
+        inputs:
+          - name: "key"
+            type: "string"
+            description: "Config key to remove, e.g. global.index-url"
+            required: true
+
+      - name: "set-index"
+        description: "Set a custom PyPI index URL"
+        template: "pip config set global.index-url {{index_url}}"
+        tags: ["private registry", "artifactory", "nexus", "index url"]
+        inputs:
+          - name: "index_url"
+            type: "string"
+            description: "Index URL, e.g. https://pypi.org/simple or a private registry"
+            required: true
+            default: "https://pypi.org/simple"
+
+      - name: "set-trusted-host"
+        description: "Mark a host as trusted (bypass SSL verification)"
+        template: "pip config set global.trusted-host {{host}}"
+        tags: ["ssl", "insecure", "trusted host", "self-signed"]
+        inputs:
+          - name: "host"
+            type: "string"
+            description: "Hostname to trust, e.g. my-registry.internal"
+            required: true

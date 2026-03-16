@@ -56,6 +56,13 @@ var (
 	StyleCompletionItem     lipgloss.Style
 	StyleCompletionSelected lipgloss.Style
 
+	// Sub-command picker overlay.
+	StyleSubCmdBox      lipgloss.Style
+	StyleSubCmdItem     lipgloss.Style
+	StyleSubCmdSelected lipgloss.Style
+	StyleSubCmdDetail   lipgloss.Style
+	StyleSubCmdLoading  lipgloss.Style
+
 	// Status bar.
 	StyleStatus    lipgloss.Style
 	StyleStatusKey lipgloss.Style
@@ -205,6 +212,32 @@ func ApplyTheme(s config.AppSettings) {
 	StyleCompletionSelected = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("255")).
 		Background(lipgloss.Color("94")).
+		Padding(0, 1)
+
+	// Sub-command picker overlay.
+	StyleSubCmdBox = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorAccent).
+		Padding(0, 1)
+
+	StyleSubCmdItem = lipgloss.NewStyle().
+		Foreground(colorText).
+		Padding(0, 1)
+
+	StyleSubCmdSelected = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("255")).
+		Background(colorSelected).
+		Bold(true).
+		Padding(0, 1)
+
+	StyleSubCmdDetail = lipgloss.NewStyle().
+		Foreground(colorMuted).
+		Italic(true).
+		Padding(0, 1)
+
+	StyleSubCmdLoading = lipgloss.NewStyle().
+		Foreground(colorMuted).
+		Italic(true).
 		Padding(0, 1)
 
 	// Status bar.

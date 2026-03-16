@@ -1,0 +1,853 @@
+name: "git"
+description: "Git version control: repository, branch, commit, remote, diff, stash, tag, reset"
+version: "1.0.0"
+commands:
+  - name: "repository"
+    description: "Initialise, clone and inspect a repository"
+    options:
+      - name: "init"
+        description: "Initialise a new Git repository"
+        template: "git init{{bare}} {{path}}"
+        tags: ["new", "create", "setup"]
+        inputs:
+          - name: "path"
+            type: "dir"
+            description: "Directory to initialise (. for current)"
+            required: true
+            default: "."
+          - name: "bare"
+            type: "flag"
+            description: "Create a bare repository (--bare)"
+            required: false
+            default: " --bare"
+
+      - name: "clone"
+        description: "Clone a remote repository"
+        template: "git clone{{depth}}{{branch}} {{url}} {{directory}}"
+        tags: ["download", "checkout", "copy"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Repository URL (HTTPS or SSH)"
+            required: true
+          - name: "directory"
+            type: "dir"
+            description: "Local directory name (leave blank to use default)"
+            required: false
+          - name: "depth"
+            type: "string"
+            description: "Shallow clone depth, e.g. --depth 1 (leave blank for full clone)"
+            required: false
+          - name: "branch"
+            type: "string"
+            description: "Branch/tag to check out, e.g. --branch main (leave blank for default)"
+            required: false
+
+      - name: "status"
+        description: "Show working tree status"
+        template: "git status{{short}}{{branch}}"
+        tags: ["state", "changes", "modified", "staged"]
+        inputs:
+          - name: "short"
+            type: "flag"
+            description: "Short format (-s)"
+            required: false
+            default: " -s"
+          - name: "branch"
+            type: "flag"
+            description: "Show branch info in short format (-b)"
+            required: false
+            default: " -b"
+
+      - name: "log"
+        description: "Show commit history"
+        template: "git log{{oneline}}{{graph}}{{all}} --max-count={{count}} {{author}} {{path}}"
+        tags: ["history", "commits", "changelog"]
+        inputs:
+          - name: "count"
+            type: "string"
+            description: "Maximum number of commits to show"
+            required: true
+            default: "20"
+          - name: "oneline"
+            type: "flag"
+            description: "One line per commit (--oneline)"
+            required: false
+            default: " --oneline"
+          - name: "graph"
+            type: "flag"
+            description: "Show branch graph (--graph)"
+            required: false
+            default: " --graph"
+          - name: "all"
+            type: "flag"
+            description: "Include all branches (--all)"
+            required: false
+            default: " --all"
+          - name: "author"
+            type: "string"
+            description: "Filter by author, e.g. --author='Alice' (leave blank to skip)"
+            required: false
+          - name: "path"
+            type: "file"
+            description: "Limit to commits touching this file (leave blank to skip)"
+            required: false
+
+  - name: "branch"
+    description: "Create, switch, rename and delete branches"
+    options:
+      - name: "list"
+        description: "List branches"
+        template: "git branch{{all}}{{remotes}}{{verbose}}"
+        tags: ["show", "branches"]
+        inputs:
+          - name: "all"
+            type: "flag"
+            description: "Show local and remote branches (-a)"
+            required: false
+            default: " -a"
+          - name: "remotes"
+            type: "flag"
+            description: "Show only remote-tracking branches (-r)"
+            required: false
+            default: " -r"
+          - name: "verbose"
+            type: "flag"
+            description: "Show SHA and subject line (-v)"
+            required: false
+            default: " -v"
+
+      - name: "create"
+        description: "Create a new branch (optionally switch to it)"
+        template: "git branch{{checkout}} {{branch_name}} {{start_point}}"
+        tags: ["new branch", "checkout -b"]
+        inputs:
+          - name: "branch_name"
+            type: "string"
+            description: "New branch name"
+            required: true
+          - name: "start_point"
+            type: "string"
+            description: "Starting commit/branch/tag (leave blank for HEAD)"
+            required: false
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "checkout"
+            type: "flag"
+            description: "Switch to the new branch immediately (-c via git switch)"
+            required: false
+            default: " -c"
+
+      - name: "switch"
+        description: "Switch to an existing branch"
+        template: "git switch {{branch}}"
+        tags: ["checkout", "change branch"]
+        inputs:
+          - name: "branch"
+            type: "string"
+            description: "Branch to switch to"
+            required: true
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+
+      - name: "rename"
+        description: "Rename a branch"
+        template: "git branch -m {{old_name}} {{new_name}}"
+        tags: ["move", "rename branch"]
+        inputs:
+          - name: "old_name"
+            type: "string"
+            description: "Current branch name"
+            required: true
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "new_name"
+            type: "string"
+            description: "New branch name"
+            required: true
+
+      - name: "delete"
+        description: "Delete a branch"
+        template: "git branch{{force}} -d {{branch}}"
+        tags: ["remove branch", "prune"]
+        inputs:
+          - name: "branch"
+            type: "string"
+            description: "Branch to delete"
+            required: true
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "force"
+            type: "flag"
+            description: "Force delete even if not fully merged (-D)"
+            required: false
+            default: " -D"
+
+      - name: "set-upstream"
+        description: "Set the upstream tracking branch"
+        template: "git branch --set-upstream-to={{remote}}/{{remote_branch}} {{local_branch}}"
+        tags: ["track", "upstream", "tracking"]
+        inputs:
+          - name: "remote"
+            type: "string"
+            description: "Remote name"
+            required: true
+            default: "origin"
+            sub_command: "git remote 2>/dev/null"
+          - name: "remote_branch"
+            type: "string"
+            description: "Remote branch name"
+            required: true
+          - name: "local_branch"
+            type: "string"
+            description: "Local branch (leave blank for current)"
+            required: false
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+
+  - name: "staging"
+    description: "Stage and unstage changes"
+    options:
+      - name: "add"
+        description: "Stage specific files or paths"
+        template: "git add{{patch}} {{paths}}"
+        tags: ["stage", "index"]
+        inputs:
+          - name: "paths"
+            type: "string"
+            description: "Files or directories to stage (space-separated, or . for all)"
+            required: true
+            default: "."
+          - name: "patch"
+            type: "flag"
+            description: "Interactively select hunks to stage (-p)"
+            required: false
+            default: " -p"
+
+      - name: "restore"
+        description: "Discard working tree changes for a file"
+        template: "git restore{{staged}} {{paths}}"
+        tags: ["unstage", "discard", "checkout --"]
+        inputs:
+          - name: "paths"
+            type: "string"
+            description: "Files to restore (space-separated, or . for all)"
+            required: true
+          - name: "staged"
+            type: "flag"
+            description: "Unstage from index instead of discarding working copy (--staged)"
+            required: false
+            default: " --staged"
+
+  - name: "commit"
+    description: "Record changes to the repository"
+    options:
+      - name: "commit"
+        description: "Commit staged changes with a message"
+        template: "git commit{{all}}{{no_verify}} -m '{{message}}'"
+        tags: ["save", "record"]
+        inputs:
+          - name: "message"
+            type: "string"
+            description: "Commit message"
+            required: true
+          - name: "all"
+            type: "flag"
+            description: "Automatically stage tracked modified/deleted files (-a)"
+            required: false
+            default: " -a"
+          - name: "no_verify"
+            type: "flag"
+            description: "Skip pre-commit and commit-msg hooks (--no-verify)"
+            required: false
+            default: " --no-verify"
+
+      - name: "amend"
+        description: "Amend the most recent commit"
+        template: "git commit --amend{{no_edit}}{{no_verify}} {{message_flag}}"
+        tags: ["fix commit", "edit commit", "rewrite"]
+        inputs:
+          - name: "no_edit"
+            type: "flag"
+            description: "Keep the existing commit message (--no-edit)"
+            required: false
+            default: " --no-edit"
+          - name: "message_flag"
+            type: "string"
+            description: "New message flag, e.g. -m 'new message' (leave blank with --no-edit)"
+            required: false
+          - name: "no_verify"
+            type: "flag"
+            description: "Skip hooks (--no-verify)"
+            required: false
+            default: " --no-verify"
+
+      - name: "fixup"
+        description: "Create a fixup commit targeting an earlier commit"
+        template: "git commit --fixup={{target_commit}}"
+        tags: ["autosquash", "fixup", "squash"]
+        inputs:
+          - name: "target_commit"
+            type: "string"
+            description: "Commit SHA to fix up"
+            required: true
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+
+  - name: "remote"
+    description: "Manage remote connections"
+    options:
+      - name: "list"
+        description: "List configured remotes with their URLs"
+        template: "git remote -v"
+        tags: ["show remotes", "origins"]
+        inputs: []
+
+      - name: "add"
+        description: "Add a new remote"
+        template: "git remote add {{name}} {{url}}"
+        tags: ["add remote", "origin"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Remote name"
+            required: true
+            default: "origin"
+          - name: "url"
+            type: "string"
+            description: "Remote URL (HTTPS or SSH)"
+            required: true
+
+      - name: "remove"
+        description: "Remove a remote"
+        template: "git remote remove {{name}}"
+        tags: ["delete remote", "rm remote"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Remote name to remove"
+            required: true
+            sub_command: "git remote 2>/dev/null"
+
+      - name: "fetch"
+        description: "Fetch from a remote (without merging)"
+        template: "git fetch{{prune}}{{all_flag}} {{remote}} {{refspec}}"
+        tags: ["download", "update refs"]
+        inputs:
+          - name: "remote"
+            type: "string"
+            description: "Remote to fetch from (leave blank with --all)"
+            required: false
+            default: "origin"
+            sub_command: "git remote 2>/dev/null"
+          - name: "refspec"
+            type: "string"
+            description: "Specific branch/refspec to fetch (leave blank for all)"
+            required: false
+          - name: "prune"
+            type: "flag"
+            description: "Remove remote-tracking refs that no longer exist (-p)"
+            required: false
+            default: " -p"
+          - name: "all_flag"
+            type: "flag"
+            description: "Fetch all remotes (--all)"
+            required: false
+            default: " --all"
+
+      - name: "pull"
+        description: "Fetch and integrate changes from a remote branch"
+        template: "git pull{{rebase}}{{ff_only}} {{remote}} {{branch}}"
+        tags: ["update", "sync", "download"]
+        inputs:
+          - name: "remote"
+            type: "string"
+            description: "Remote name"
+            required: false
+            default: "origin"
+            sub_command: "git remote 2>/dev/null"
+          - name: "branch"
+            type: "string"
+            description: "Remote branch (leave blank to use tracking branch)"
+            required: false
+            sub_command: "git branch -r --format='%(refname:short),%(objectname:short)' 2>/dev/null"
+          - name: "rebase"
+            type: "flag"
+            description: "Rebase local commits on top of fetched branch (--rebase)"
+            required: false
+            default: " --rebase"
+          - name: "ff_only"
+            type: "flag"
+            description: "Only fast-forward; fail if not possible (--ff-only)"
+            required: false
+            default: " --ff-only"
+
+      - name: "push"
+        description: "Push local commits to a remote"
+        template: "git push{{set_upstream}}{{force}}{{tags_flag}} {{remote}} {{refspec}}"
+        tags: ["upload", "publish", "send"]
+        inputs:
+          - name: "remote"
+            type: "string"
+            description: "Remote name"
+            required: false
+            default: "origin"
+            sub_command: "git remote 2>/dev/null"
+          - name: "refspec"
+            type: "string"
+            description: "Branch or refspec to push (leave blank for current branch)"
+            required: false
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "set_upstream"
+            type: "flag"
+            description: "Set upstream tracking on first push (-u)"
+            required: false
+            default: " -u"
+          - name: "force"
+            type: "flag"
+            description: "Force push — overwrites remote history (--force-with-lease)"
+            required: false
+            default: " --force-with-lease"
+          - name: "tags_flag"
+            type: "flag"
+            description: "Push all tags (--tags)"
+            required: false
+            default: " --tags"
+
+  - name: "diff"
+    description: "Show changes between commits, branches or working tree"
+    options:
+      - name: "working-tree"
+        description: "Diff unstaged changes in the working tree"
+        template: "git diff{{stat}}{{word_diff}} {{path}}"
+        tags: ["changes", "modified", "unstaged"]
+        inputs:
+          - name: "path"
+            type: "file"
+            description: "Limit to a file or directory (leave blank for all)"
+            required: false
+          - name: "stat"
+            type: "flag"
+            description: "Show summary stats only (--stat)"
+            required: false
+            default: " --stat"
+          - name: "word_diff"
+            type: "flag"
+            description: "Show word-level diff (--word-diff)"
+            required: false
+            default: " --word-diff"
+
+      - name: "staged"
+        description: "Diff staged changes (index vs last commit)"
+        template: "git diff --cached{{stat}}{{word_diff}} {{path}}"
+        tags: ["index", "cached", "to commit"]
+        inputs:
+          - name: "path"
+            type: "file"
+            description: "Limit to a file or directory (leave blank for all)"
+            required: false
+          - name: "stat"
+            type: "flag"
+            description: "Show summary stats only (--stat)"
+            required: false
+            default: " --stat"
+          - name: "word_diff"
+            type: "flag"
+            description: "Show word-level diff (--word-diff)"
+            required: false
+            default: " --word-diff"
+
+      - name: "between-refs"
+        description: "Diff between two commits, branches or tags"
+        template: "git diff{{stat}} {{ref_a}}{{separator}}{{ref_b}} -- {{path}}"
+        tags: ["compare", "branches", "commits"]
+        inputs:
+          - name: "ref_a"
+            type: "string"
+            description: "Base commit/branch/tag"
+            required: true
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "separator"
+            type: "string"
+            description: "Separator: use '...' for merge-base diff, '..' for direct diff"
+            required: true
+            default: "..."
+          - name: "ref_b"
+            type: "string"
+            description: "Target commit/branch/tag"
+            required: true
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "path"
+            type: "file"
+            description: "Limit to a file or directory (leave blank for all)"
+            required: false
+          - name: "stat"
+            type: "flag"
+            description: "Show summary stats only (--stat)"
+            required: false
+            default: " --stat"
+
+  - name: "merge"
+    description: "Integrate branches via merge, rebase or cherry-pick"
+    options:
+      - name: "merge"
+        description: "Merge a branch into the current branch"
+        template: "git merge{{no_ff}}{{squash}}{{no_commit}} {{branch}}"
+        tags: ["integrate", "combine"]
+        inputs:
+          - name: "branch"
+            type: "string"
+            description: "Branch to merge in"
+            required: true
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "no_ff"
+            type: "flag"
+            description: "Always create a merge commit (--no-ff)"
+            required: false
+            default: " --no-ff"
+          - name: "squash"
+            type: "flag"
+            description: "Squash all commits into one staged change (--squash)"
+            required: false
+            default: " --squash"
+          - name: "no_commit"
+            type: "flag"
+            description: "Stop before creating the merge commit (--no-commit)"
+            required: false
+            default: " --no-commit"
+
+      - name: "rebase"
+        description: "Rebase current branch onto another"
+        template: "git rebase{{interactive}}{{autosquash}} {{onto}}"
+        tags: ["linear history", "replay"]
+        inputs:
+          - name: "onto"
+            type: "string"
+            description: "Branch or commit to rebase onto"
+            required: true
+            sub_command: "git branch --format='%(refname:short),%(objectname:short) %(subject)' 2>/dev/null"
+          - name: "interactive"
+            type: "flag"
+            description: "Interactive rebase — edit/squash/reorder commits (-i)"
+            required: false
+            default: " -i"
+          - name: "autosquash"
+            type: "flag"
+            description: "Auto-apply fixup!/squash! commits (--autosquash)"
+            required: false
+            default: " --autosquash"
+
+      - name: "cherry-pick"
+        description: "Apply a specific commit onto the current branch"
+        template: "git cherry-pick{{no_commit}}{{edit}} {{commit}}"
+        tags: ["pick", "apply commit", "port"]
+        inputs:
+          - name: "commit"
+            type: "string"
+            description: "Commit SHA to cherry-pick"
+            required: true
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+          - name: "no_commit"
+            type: "flag"
+            description: "Apply changes without committing (-n)"
+            required: false
+            default: " -n"
+          - name: "edit"
+            type: "flag"
+            description: "Open editor to modify the commit message (-e)"
+            required: false
+            default: " -e"
+
+  - name: "stash"
+    description: "Temporarily shelve and restore changes"
+    options:
+      - name: "save"
+        description: "Stash current working tree changes"
+        template: "git stash push{{include_untracked}}{{keep_index}} -m '{{message}}'"
+        tags: ["shelve", "hide", "temporary"]
+        inputs:
+          - name: "message"
+            type: "string"
+            description: "Stash description"
+            required: false
+          - name: "include_untracked"
+            type: "flag"
+            description: "Include untracked files (-u)"
+            required: false
+            default: " -u"
+          - name: "keep_index"
+            type: "flag"
+            description: "Keep staged changes in the index (--keep-index)"
+            required: false
+            default: " --keep-index"
+
+      - name: "list"
+        description: "List all stash entries"
+        template: "git stash list"
+        tags: ["show stashes"]
+        inputs: []
+
+      - name: "pop"
+        description: "Apply the latest (or a specific) stash and remove it"
+        template: "git stash pop {{stash}}"
+        tags: ["restore", "apply and drop"]
+        inputs:
+          - name: "stash"
+            type: "string"
+            description: "Stash ref, e.g. stash@{1} (leave blank for latest)"
+            required: false
+            sub_command: "git stash list --format='%gd,%gs' 2>/dev/null"
+
+      - name: "apply"
+        description: "Apply a stash without removing it"
+        template: "git stash apply {{stash}}"
+        tags: ["restore stash", "keep stash"]
+        inputs:
+          - name: "stash"
+            type: "string"
+            description: "Stash ref, e.g. stash@{1} (leave blank for latest)"
+            required: false
+            sub_command: "git stash list --format='%gd,%gs' 2>/dev/null"
+
+      - name: "drop"
+        description: "Delete a stash entry"
+        template: "git stash drop {{stash}}"
+        tags: ["delete stash", "remove stash"]
+        inputs:
+          - name: "stash"
+            type: "string"
+            description: "Stash ref, e.g. stash@{1} (leave blank for latest)"
+            required: false
+            sub_command: "git stash list --format='%gd,%gs' 2>/dev/null"
+
+      - name: "show"
+        description: "Show the diff stored in a stash entry"
+        template: "git stash show{{patch}} {{stash}}"
+        tags: ["inspect stash", "stash diff"]
+        inputs:
+          - name: "stash"
+            type: "string"
+            description: "Stash ref (leave blank for latest)"
+            required: false
+            sub_command: "git stash list --format='%gd,%gs' 2>/dev/null"
+          - name: "patch"
+            type: "flag"
+            description: "Show full diff (-p)"
+            required: false
+            default: " -p"
+
+  - name: "tag"
+    description: "Create, list and delete tags"
+    options:
+      - name: "list"
+        description: "List tags, optionally filtered by pattern"
+        template: "git tag -l {{pattern}}"
+        tags: ["show tags", "versions"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Shell glob pattern to filter tags, e.g. v1.* (leave blank for all)"
+            required: false
+
+      - name: "create"
+        description: "Create a lightweight tag at a commit"
+        template: "git tag {{tag_name}} {{commit}}"
+        tags: ["lightweight tag", "label"]
+        inputs:
+          - name: "tag_name"
+            type: "string"
+            description: "Tag name, e.g. v1.2.3"
+            required: true
+          - name: "commit"
+            type: "string"
+            description: "Commit to tag (leave blank for HEAD)"
+            required: false
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+
+      - name: "create-annotated"
+        description: "Create an annotated tag with a message"
+        template: "git tag -a {{tag_name}} -m '{{message}}' {{commit}}"
+        tags: ["annotated tag", "release tag", "signed"]
+        inputs:
+          - name: "tag_name"
+            type: "string"
+            description: "Tag name, e.g. v1.2.3"
+            required: true
+          - name: "message"
+            type: "string"
+            description: "Annotation message"
+            required: true
+          - name: "commit"
+            type: "string"
+            description: "Commit to tag (leave blank for HEAD)"
+            required: false
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+
+      - name: "delete"
+        description: "Delete a tag locally"
+        template: "git tag -d {{tag_name}}"
+        tags: ["remove tag"]
+        inputs:
+          - name: "tag_name"
+            type: "string"
+            description: "Tag to delete"
+            required: true
+            sub_command: "git tag -l 2>/dev/null"
+
+      - name: "push"
+        description: "Push a tag (or all tags) to a remote"
+        template: "git push {{remote}} {{tag_or_all}}"
+        tags: ["publish tag", "upload tag"]
+        inputs:
+          - name: "remote"
+            type: "string"
+            description: "Remote name"
+            required: true
+            default: "origin"
+            sub_command: "git remote 2>/dev/null"
+          - name: "tag_or_all"
+            type: "string"
+            description: "Tag name to push, or --tags to push all"
+            required: true
+            default: "--tags"
+            sub_command: "git tag -l 2>/dev/null"
+
+      - name: "delete-remote"
+        description: "Delete a tag from a remote"
+        template: "git push {{remote}} --delete {{tag_name}}"
+        tags: ["remove remote tag", "unpublish tag"]
+        inputs:
+          - name: "remote"
+            type: "string"
+            description: "Remote name"
+            required: true
+            default: "origin"
+            sub_command: "git remote 2>/dev/null"
+          - name: "tag_name"
+            type: "string"
+            description: "Tag to delete from remote"
+            required: true
+            sub_command: "git tag -l 2>/dev/null"
+
+  - name: "reset"
+    description: "Undo commits or unstage changes"
+    options:
+      - name: "soft"
+        description: "Move HEAD back, keep changes staged"
+        template: "git reset --soft {{commit}}"
+        tags: ["undo commit", "keep staged"]
+        inputs:
+          - name: "commit"
+            type: "string"
+            description: "Target commit/ref, e.g. HEAD~1 or a SHA"
+            required: true
+            default: "HEAD~1"
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+
+      - name: "mixed"
+        description: "Move HEAD back, keep changes unstaged (default reset)"
+        template: "git reset --mixed {{commit}}"
+        tags: ["undo commit", "unstage"]
+        inputs:
+          - name: "commit"
+            type: "string"
+            description: "Target commit/ref, e.g. HEAD~1 or a SHA"
+            required: true
+            default: "HEAD~1"
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+
+      - name: "hard"
+        description: "Move HEAD back and discard all changes (destructive)"
+        template: "git reset --hard {{commit}}"
+        tags: ["discard", "destructive", "clean"]
+        inputs:
+          - name: "commit"
+            type: "string"
+            description: "Target commit/ref, e.g. HEAD~1 or a SHA"
+            required: true
+            default: "HEAD~1"
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+
+      - name: "revert"
+        description: "Create a new commit that undoes a specific commit"
+        template: "git revert{{no_edit}}{{no_commit}} {{commit}}"
+        tags: ["undo", "safe reset", "new commit"]
+        inputs:
+          - name: "commit"
+            type: "string"
+            description: "Commit SHA to revert"
+            required: true
+            sub_command: "git log --oneline -30 --format='%H,%h %s' 2>/dev/null"
+          - name: "no_edit"
+            type: "flag"
+            description: "Do not open the commit message editor (--no-edit)"
+            required: false
+            default: " --no-edit"
+          - name: "no_commit"
+            type: "flag"
+            description: "Stage the revert without committing (-n)"
+            required: false
+            default: " -n"
+
+  - name: "config"
+    description: "Read and write Git configuration"
+    options:
+      - name: "set-identity"
+        description: "Set user name and email (global or local)"
+        template: "git config{{scope}} user.name '{{name}}' && git config{{scope}} user.email '{{email}}'"
+        tags: ["user", "author", "email", "name"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Your full name"
+            required: true
+          - name: "email"
+            type: "string"
+            description: "Your email address"
+            required: true
+          - name: "scope"
+            type: "flag"
+            description: "Apply globally instead of to the current repo (--global)"
+            required: false
+            default: " --global"
+
+      - name: "set-default-branch"
+        description: "Set the default branch name for new repositories"
+        template: "git config --global init.defaultBranch {{branch_name}}"
+        tags: ["default branch", "main", "master"]
+        inputs:
+          - name: "branch_name"
+            type: "string"
+            description: "Default branch name"
+            required: true
+            default: "main"
+
+      - name: "list"
+        description: "List all configuration entries"
+        template: "git config{{scope}} --list"
+        tags: ["show config", "settings"]
+        inputs:
+          - name: "scope"
+            type: "flag"
+            description: "Limit to global config (--global)"
+            required: false
+            default: " --global"
+
+      - name: "set-editor"
+        description: "Set the default Git editor"
+        template: "git config --global core.editor '{{editor}}'"
+        tags: ["editor", "vim", "nano", "vscode"]
+        inputs:
+          - name: "editor"
+            type: "string"
+            description: "Editor command, e.g. vim, nano, 'code --wait'"
+            required: true
+            default: "vim"
+
+      - name: "set-alias"
+        description: "Create a Git alias"
+        template: "git config --global alias.{{alias_name}} '{{alias_command}}'"
+        tags: ["shortcut", "abbreviation"]
+        inputs:
+          - name: "alias_name"
+            type: "string"
+            description: "Alias name, e.g. st"
+            required: true
+          - name: "alias_command"
+            type: "string"
+            description: "Command the alias expands to, e.g. status"
+            required: true

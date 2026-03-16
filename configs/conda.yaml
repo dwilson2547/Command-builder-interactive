@@ -1,0 +1,316 @@
+name: "conda"
+description: "Conda — environment and package management for Python and data science"
+version: "1.0.0"
+commands:
+  - name: "env"
+    description: "Create, manage, and export Conda environments"
+    options:
+      - name: "list"
+        description: "List all Conda environments"
+        template: "conda env list"
+        tags: ["environments", "list envs", "show envs", "all envs"]
+        inputs: []
+
+      - name: "create"
+        description: "Create a new Conda environment with a specified Python version"
+        template: "conda create -n {{name}}{{python}}{{packages}}{{yes}}"
+        tags: ["new environment", "new env", "create env", "python version"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Environment name"
+            required: true
+          - name: "python"
+            type: "string"
+            description: "Python version, e.g. python=3.11 (leave blank for latest)"
+            required: false
+            default: "python=3.11"
+          - name: "packages"
+            type: "string"
+            description: "Additional packages to install at creation, e.g. numpy pandas (leave blank for none)"
+            required: false
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "create-from-file"
+        description: "Create an environment from an environment.yml file"
+        template: "conda env create -f {{file}}{{name}}"
+        tags: ["yml", "yaml", "recreate", "import env", "environment file"]
+        inputs:
+          - name: "file"
+            type: "file"
+            description: "environment.yml file path"
+            required: true
+            default: "environment.yml"
+          - name: "name"
+            type: "string"
+            description: "Override the environment name, e.g. -n my-env (leave blank to use name from file)"
+            required: false
+
+      - name: "clone"
+        description: "Clone an existing environment into a new one"
+        template: "conda create -n {{new_name}} --clone {{source}}"
+        tags: ["copy env", "duplicate env", "clone env"]
+        inputs:
+          - name: "source"
+            type: "string"
+            description: "Source environment name to clone"
+            required: true
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$'"
+          - name: "new_name"
+            type: "string"
+            description: "Name for the new cloned environment"
+            required: true
+
+      - name: "activate"
+        description: "Activate a Conda environment"
+        template: "conda activate {{name}}"
+        tags: ["switch env", "use env", "enter env"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Environment name to activate"
+            required: true
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$'"
+
+      - name: "deactivate"
+        description: "Deactivate the current Conda environment"
+        template: "conda deactivate"
+        tags: ["exit env", "leave env", "base"]
+        inputs: []
+
+      - name: "remove"
+        description: "Remove a Conda environment and all its packages"
+        template: "conda env remove -n {{name}}{{yes}}"
+        tags: ["delete env", "destroy env", "rm env"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Environment name to remove"
+            required: true
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$'"
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "export"
+        description: "Export an environment to a YAML file for sharing or reproduction"
+        template: "conda env export{{name}}{{no_builds}} > {{output_file}}"
+        tags: ["save env", "yml", "yaml", "share env", "freeze env"]
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output file path"
+            required: true
+            default: "environment.yml"
+          - name: "name"
+            type: "string"
+            description: "Environment to export, e.g. -n myenv (leave blank for current)"
+            required: false
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$' | awk '{print \"-n \"$1\",\"$1}'"
+          - name: "no_builds"
+            type: "flag"
+            description: "Exclude build strings for cross-platform portability (--no-builds)"
+            required: false
+            default: " --no-builds"
+
+      - name: "export-explicit"
+        description: "Export an exact, platform-specific package list (for perfect reproducibility)"
+        template: "conda list{{name}} --explicit > {{output_file}}"
+        tags: ["explicit", "lock file", "exact versions", "reproducible"]
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output spec file path"
+            required: true
+            default: "spec-file.txt"
+          - name: "name"
+            type: "string"
+            description: "Environment to export, e.g. -n myenv (leave blank for current)"
+            required: false
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$' | awk '{print \"-n \"$1\",\"$1}'"
+
+  - name: "packages"
+    description: "Install, update, remove, and search Conda packages"
+    options:
+      - name: "list"
+        description: "List packages installed in an environment"
+        template: "conda list{{name}}"
+        tags: ["show packages", "installed", "list packages"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Environment name, e.g. -n myenv (leave blank for current)"
+            required: false
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$' | awk '{print \"-n \"$1\",\"$1}'"
+
+      - name: "install"
+        description: "Install one or more packages into the active or named environment"
+        template: "conda install{{name}}{{channel}} {{packages}}{{yes}}"
+        tags: ["add package", "install package", "conda install"]
+        inputs:
+          - name: "packages"
+            type: "string"
+            description: "Package(s) to install, e.g. numpy pandas=2.0"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Target environment, e.g. -n myenv (leave blank for active)"
+            required: false
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$' | awk '{print \"-n \"$1\",\"$1}'"
+          - name: "channel"
+            type: "string"
+            description: "Channel to install from, e.g. -c conda-forge (leave blank for defaults)"
+            required: false
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "install-from-file"
+        description: "Install packages from a spec or requirements file"
+        template: "conda install{{name}} --file {{file}}{{yes}}"
+        tags: ["requirements", "spec file", "bulk install", "from file"]
+        inputs:
+          - name: "file"
+            type: "file"
+            description: "Spec or requirements file"
+            required: true
+            default: "spec-file.txt"
+          - name: "name"
+            type: "string"
+            description: "Target environment, e.g. -n myenv (leave blank for active)"
+            required: false
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$' | awk '{print \"-n \"$1\",\"$1}'"
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "update"
+        description: "Update one or more packages in an environment"
+        template: "conda update{{name}} {{packages}}{{yes}}"
+        tags: ["upgrade", "update package", "conda update"]
+        inputs:
+          - name: "packages"
+            type: "string"
+            description: "Package(s) to update — use --all to update everything"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Target environment, e.g. -n myenv (leave blank for active)"
+            required: false
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$' | awk '{print \"-n \"$1\",\"$1}'"
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "remove-package"
+        description: "Remove one or more packages from an environment"
+        template: "conda remove{{name}} {{packages}}{{yes}}"
+        tags: ["uninstall", "delete package", "conda remove"]
+        inputs:
+          - name: "packages"
+            type: "string"
+            description: "Package(s) to remove"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Target environment, e.g. -n myenv (leave blank for active)"
+            required: false
+            sub_command: "conda env list 2>/dev/null | grep -v '^#' | awk '{print $1}' | grep -v '^$' | awk '{print \"-n \"$1\",\"$1}'"
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "search"
+        description: "Search for a package across Conda channels"
+        template: "conda search {{package}}{{channel}}"
+        tags: ["find package", "lookup", "available versions"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name or pattern to search for"
+            required: true
+          - name: "channel"
+            type: "string"
+            description: "Channel to search, e.g. -c conda-forge (leave blank for defaults)"
+            required: false
+
+  - name: "conda"
+    description: "Conda system maintenance and information"
+    options:
+      - name: "info"
+        description: "Display information about the current Conda installation"
+        template: "conda info"
+        tags: ["version", "config", "system info", "conda info"]
+        inputs: []
+
+      - name: "update-conda"
+        description: "Update Conda itself to the latest version"
+        template: "conda update -n base -c defaults conda{{yes}}"
+        tags: ["upgrade conda", "update conda", "conda version"]
+        inputs:
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "clean"
+        description: "Remove unused packages, tarballs, and caches to free disk space"
+        template: "conda clean{{all}}{{tarballs}}{{packages}}{{yes}}"
+        tags: ["disk space", "cache", "tarballs", "cleanup", "prune"]
+        inputs:
+          - name: "all"
+            type: "flag"
+            description: "Remove everything (tarballs, packages, caches, logfiles) (--all)"
+            required: false
+            default: " --all"
+          - name: "tarballs"
+            type: "flag"
+            description: "Remove cached package tarballs only (--tarballs)"
+            required: false
+            default: " --tarballs"
+          - name: "packages"
+            type: "flag"
+            description: "Remove unused cached packages only (--packages)"
+            required: false
+            default: " --packages"
+          - name: "yes"
+            type: "flag"
+            description: "Auto-confirm without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "config-show"
+        description: "Show current Conda configuration"
+        template: "conda config --show{{key}}"
+        tags: ["config", "settings", "channels", "show config"]
+        inputs:
+          - name: "key"
+            type: "string"
+            description: "Specific config key to show, e.g. channels (leave blank for all)"
+            required: false
+
+      - name: "add-channel"
+        description: "Add a channel to the Conda channel list"
+        template: "conda config --add channels {{channel}}"
+        tags: ["channel", "conda-forge", "bioconda", "add channel"]
+        inputs:
+          - name: "channel"
+            type: "string"
+            description: "Channel name to add (e.g. conda-forge, bioconda)"
+            required: true
+            default: "conda-forge"

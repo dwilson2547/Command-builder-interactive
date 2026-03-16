@@ -1,0 +1,636 @@
+name: "system-raw"
+description: "Core filesystem and remote access: mv, rm, rmdir, cp, rsync, sftp, ssh, ssh-keygen"
+version: "1.0.0"
+commands:
+  - name: "mv"
+    description: "Move or rename files and directories"
+    options:
+      - name: "move"
+        description: "Move or rename a file or directory"
+        template: "mv{{interactive}}{{no_clobber}}{{backup}}{{verbose}} {{source}} {{destination}}"
+        tags: ["rename", "relocate", "move file"]
+        inputs:
+          - name: "source"
+            type: "file"
+            description: "Source file or directory"
+            required: true
+          - name: "destination"
+            type: "file"
+            description: "Destination path"
+            required: true
+          - name: "interactive"
+            type: "flag"
+            description: "Prompt before overwriting (-i)"
+            required: false
+            default: " -i"
+          - name: "no_clobber"
+            type: "flag"
+            description: "Never overwrite existing files (-n)"
+            required: false
+            default: " -n"
+          - name: "backup"
+            type: "flag"
+            description: "Make a backup of each destination file (--backup)"
+            required: false
+            default: " --backup"
+          - name: "verbose"
+            type: "flag"
+            description: "Explain what is being done (-v)"
+            required: false
+            default: " -v"
+
+      - name: "move-into-dir"
+        description: "Move one or more files into a target directory"
+        template: "mv{{interactive}}{{verbose}} {{sources}} {{directory}}"
+        tags: ["move multiple", "move files", "relocate"]
+        inputs:
+          - name: "sources"
+            type: "string"
+            description: "Source file(s) — space-separated or glob (e.g. *.log)"
+            required: true
+          - name: "directory"
+            type: "dir"
+            description: "Target directory"
+            required: true
+          - name: "interactive"
+            type: "flag"
+            description: "Prompt before overwriting (-i)"
+            required: false
+            default: " -i"
+          - name: "verbose"
+            type: "flag"
+            description: "Explain what is being done (-v)"
+            required: false
+            default: " -v"
+
+  - name: "rm"
+    description: "Remove files and directories"
+    options:
+      - name: "remove-file"
+        description: "Remove one or more files"
+        template: "rm{{force}}{{interactive}}{{verbose}} {{targets}}"
+        tags: ["delete", "unlink", "erase"]
+        inputs:
+          - name: "targets"
+            type: "string"
+            description: "File(s) to remove — space-separated or glob"
+            required: true
+          - name: "force"
+            type: "flag"
+            description: "Ignore nonexistent files, never prompt (-f)"
+            required: false
+            default: " -f"
+          - name: "interactive"
+            type: "flag"
+            description: "Prompt before every removal (-i)"
+            required: false
+            default: " -i"
+          - name: "verbose"
+            type: "flag"
+            description: "Explain what is being done (-v)"
+            required: false
+            default: " -v"
+
+      - name: "remove-recursive"
+        description: "Remove a directory and all its contents"
+        template: "rm -r{{force}}{{interactive}}{{verbose}} {{target}}"
+        tags: ["delete directory", "delete folder", "recursive", "rm -rf"]
+        inputs:
+          - name: "target"
+            type: "dir"
+            description: "Directory to remove"
+            required: true
+          - name: "force"
+            type: "flag"
+            description: "Ignore nonexistent files, never prompt (-f)"
+            required: false
+            default: " -f"
+          - name: "interactive"
+            type: "flag"
+            description: "Prompt before every removal (-i)"
+            required: false
+            default: " -i"
+          - name: "verbose"
+            type: "flag"
+            description: "Explain what is being done (-v)"
+            required: false
+            default: " -v"
+
+  - name: "rmdir"
+    description: "Remove empty directories"
+    options:
+      - name: "remove-empty-dir"
+        description: "Remove one or more empty directories"
+        template: "rmdir{{parents}}{{verbose}} {{directories}}"
+        tags: ["delete empty folder", "remove directory"]
+        inputs:
+          - name: "directories"
+            type: "string"
+            description: "Directory path(s) to remove — space-separated"
+            required: true
+          - name: "parents"
+            type: "flag"
+            description: "Remove directory and its empty ancestors (--parents)"
+            required: false
+            default: " --parents"
+          - name: "verbose"
+            type: "flag"
+            description: "Output a diagnostic for every directory processed (-v)"
+            required: false
+            default: " -v"
+
+  - name: "cp"
+    description: "Copy files and directories"
+    options:
+      - name: "copy-file"
+        description: "Copy a file to a destination"
+        template: "cp{{preserve}}{{interactive}}{{no_clobber}}{{verbose}} {{source}} {{destination}}"
+        tags: ["duplicate", "copy file"]
+        inputs:
+          - name: "source"
+            type: "file"
+            description: "Source file"
+            required: true
+          - name: "destination"
+            type: "file"
+            description: "Destination file or directory"
+            required: true
+          - name: "preserve"
+            type: "flag"
+            description: "Preserve mode, ownership, timestamps (-p)"
+            required: false
+            default: " -p"
+          - name: "interactive"
+            type: "flag"
+            description: "Prompt before overwriting (-i)"
+            required: false
+            default: " -i"
+          - name: "no_clobber"
+            type: "flag"
+            description: "Never overwrite existing files (-n)"
+            required: false
+            default: " -n"
+          - name: "verbose"
+            type: "flag"
+            description: "Explain what is being done (-v)"
+            required: false
+            default: " -v"
+
+      - name: "copy-recursive"
+        description: "Copy a directory and its contents recursively"
+        template: "cp -r{{preserve}}{{interactive}}{{verbose}} {{source}} {{destination}}"
+        tags: ["copy directory", "copy folder", "recursive"]
+        inputs:
+          - name: "source"
+            type: "dir"
+            description: "Source directory"
+            required: true
+          - name: "destination"
+            type: "dir"
+            description: "Destination directory"
+            required: true
+          - name: "preserve"
+            type: "flag"
+            description: "Preserve mode, ownership, timestamps (-p)"
+            required: false
+            default: " -p"
+          - name: "interactive"
+            type: "flag"
+            description: "Prompt before overwriting (-i)"
+            required: false
+            default: " -i"
+          - name: "verbose"
+            type: "flag"
+            description: "Explain what is being done (-v)"
+            required: false
+            default: " -v"
+
+  - name: "rsync"
+    description: "Efficient file synchronisation locally or over SSH"
+    options:
+      - name: "local-sync"
+        description: "Sync a local directory to another local path"
+        template: "rsync -av{{dry_run}}{{delete}}{{checksum}} {{source}}/ {{destination}}"
+        tags: ["copy", "sync", "local", "mirror"]
+        inputs:
+          - name: "source"
+            type: "dir"
+            description: "Source directory"
+            required: true
+          - name: "destination"
+            type: "dir"
+            description: "Destination directory"
+            required: true
+          - name: "dry_run"
+            type: "flag"
+            description: "Dry run — show what would change (--dry-run)"
+            required: false
+            default: " --dry-run"
+          - name: "delete"
+            type: "flag"
+            description: "Delete files at destination that no longer exist at source (--delete)"
+            required: false
+            default: " --delete"
+          - name: "checksum"
+            type: "flag"
+            description: "Use checksum instead of mod-time+size for change detection (-c)"
+            required: false
+            default: " -c"
+
+      - name: "push-to-remote"
+        description: "Sync a local directory to a remote server over SSH"
+        template: "rsync -av{{dry_run}}{{delete}}{{port}} {{source}}/ {{user}}@{{host}}:{{remote_path}}"
+        tags: ["upload", "deploy", "push", "remote", "ssh"]
+        inputs:
+          - name: "source"
+            type: "dir"
+            description: "Local source directory"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "Remote SSH username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "remote_path"
+            type: "string"
+            description: "Destination path on the remote server"
+            required: true
+          - name: "dry_run"
+            type: "flag"
+            description: "Dry run — show what would change (--dry-run)"
+            required: false
+            default: " --dry-run"
+          - name: "delete"
+            type: "flag"
+            description: "Delete remote files that no longer exist locally (--delete)"
+            required: false
+            default: " --delete"
+          - name: "port"
+            type: "string"
+            description: "Custom SSH port, e.g. -e 'ssh -p 2222' (leave blank for default)"
+            required: false
+
+      - name: "pull-from-remote"
+        description: "Sync a remote directory to a local path over SSH"
+        template: "rsync -av{{dry_run}}{{delete}}{{port}} {{user}}@{{host}}:{{remote_path}}/ {{destination}}"
+        tags: ["download", "pull", "remote", "ssh"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote SSH username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "remote_path"
+            type: "string"
+            description: "Source path on the remote server"
+            required: true
+          - name: "destination"
+            type: "dir"
+            description: "Local destination directory"
+            required: true
+          - name: "dry_run"
+            type: "flag"
+            description: "Dry run — show what would change (--dry-run)"
+            required: false
+            default: " --dry-run"
+          - name: "delete"
+            type: "flag"
+            description: "Delete local files no longer present on remote (--delete)"
+            required: false
+            default: " --delete"
+          - name: "port"
+            type: "string"
+            description: "Custom SSH port, e.g. -e 'ssh -p 2222' (leave blank for default)"
+            required: false
+
+  - name: "sftp"
+    description: "Secure file transfer protocol"
+    options:
+      - name: "connect"
+        description: "Open an interactive SFTP session"
+        template: "sftp{{port}} {{user}}@{{host}}"
+        tags: ["interactive", "session", "connect"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "port"
+            type: "string"
+            description: "Custom port, e.g. -P 2222 (leave blank for 22)"
+            required: false
+
+      - name: "download-file"
+        description: "Download a file from a remote server via SFTP"
+        template: "echo 'get {{remote_path}} {{local_path}}' | sftp{{port}} {{user}}@{{host}}"
+        tags: ["get", "fetch", "download", "pull"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "remote_path"
+            type: "string"
+            description: "Remote file path"
+            required: true
+          - name: "local_path"
+            type: "file"
+            description: "Local destination path"
+            required: true
+          - name: "port"
+            type: "string"
+            description: "Custom port, e.g. -P 2222 (leave blank for 22)"
+            required: false
+
+      - name: "upload-file"
+        description: "Upload a file to a remote server via SFTP"
+        template: "echo 'put {{local_path}} {{remote_path}}' | sftp{{port}} {{user}}@{{host}}"
+        tags: ["put", "send", "upload", "push"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "local_path"
+            type: "file"
+            description: "Local file to upload"
+            required: true
+          - name: "remote_path"
+            type: "string"
+            description: "Destination path on the remote server"
+            required: true
+          - name: "port"
+            type: "string"
+            description: "Custom port, e.g. -P 2222 (leave blank for 22)"
+            required: false
+
+  - name: "ssh"
+    description: "Secure shell remote access and tunnelling"
+    options:
+      - name: "connect"
+        description: "Open an interactive SSH session"
+        template: "ssh{{port}}{{identity}}{{x11}} {{user}}@{{host}}"
+        tags: ["login", "remote", "shell", "terminal"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "port"
+            type: "string"
+            description: "Custom port, e.g. -p 2222 (leave blank for 22)"
+            required: false
+          - name: "identity"
+            type: "string"
+            description: "Identity file, e.g. -i ~/.ssh/id_ed25519 (leave blank for default)"
+            required: false
+            sub_command: "ls ~/.ssh/id_* ~/.ssh/*.pem 2>/dev/null | grep -v '\\.pub$' | awk '{print \"-i \"$1\",\"$1}'"
+          - name: "x11"
+            type: "flag"
+            description: "Enable X11 forwarding (-X)"
+            required: false
+            default: " -X"
+
+      - name: "run-command"
+        description: "Execute a single command on a remote host"
+        template: "ssh{{port}}{{identity}} {{user}}@{{host}} '{{command}}'"
+        tags: ["exec", "execute", "remote command", "one-liner"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "command"
+            type: "string"
+            description: "Command to run remotely"
+            required: true
+          - name: "port"
+            type: "string"
+            description: "Custom port, e.g. -p 2222 (leave blank for 22)"
+            required: false
+          - name: "identity"
+            type: "string"
+            description: "Identity file, e.g. -i ~/.ssh/id_ed25519 (leave blank for default)"
+            required: false
+            sub_command: "ls ~/.ssh/id_* ~/.ssh/*.pem 2>/dev/null | grep -v '\\.pub$' | awk '{print \"-i \"$1\",\"$1}'"
+
+      - name: "local-port-forward"
+        description: "Forward a local port to a service on or behind the remote host"
+        template: "ssh -N -L {{local_port}}:{{remote_host}}:{{remote_port}}{{port}}{{identity}} {{user}}@{{jump_host}}"
+        tags: ["tunnel", "proxy", "forward", "local forward", "L"]
+        inputs:
+          - name: "local_port"
+            type: "string"
+            description: "Local port to listen on"
+            required: true
+            default: "8080"
+          - name: "remote_host"
+            type: "string"
+            description: "Target host reachable from the SSH server (use localhost for the server itself)"
+            required: true
+            default: "localhost"
+          - name: "remote_port"
+            type: "string"
+            description: "Target port on the remote host"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "SSH username"
+            required: true
+          - name: "jump_host"
+            type: "string"
+            description: "SSH server hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "port"
+            type: "string"
+            description: "Custom SSH port, e.g. -p 2222 (leave blank for 22)"
+            required: false
+          - name: "identity"
+            type: "string"
+            description: "Identity file, e.g. -i ~/.ssh/id_ed25519 (leave blank for default)"
+            required: false
+
+      - name: "remote-port-forward"
+        description: "Expose a local port on the remote server (reverse tunnel)"
+        template: "ssh -N -R {{remote_port}}:{{local_host}}:{{local_port}}{{port}}{{identity}} {{user}}@{{host}}"
+        tags: ["reverse tunnel", "expose", "remote forward", "R"]
+        inputs:
+          - name: "remote_port"
+            type: "string"
+            description: "Port to open on the remote server"
+            required: true
+          - name: "local_host"
+            type: "string"
+            description: "Local host to forward from (usually localhost)"
+            required: true
+            default: "localhost"
+          - name: "local_port"
+            type: "string"
+            description: "Local port to forward"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "SSH username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote SSH server hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "port"
+            type: "string"
+            description: "Custom SSH port, e.g. -p 2222 (leave blank for 22)"
+            required: false
+          - name: "identity"
+            type: "string"
+            description: "Identity file, e.g. -i ~/.ssh/id_ed25519 (leave blank for default)"
+            required: false
+
+      - name: "copy-id"
+        description: "Install your public key on a remote host for passwordless login"
+        template: "ssh-copy-id{{identity}}{{port}} {{user}}@{{host}}"
+        tags: ["authorize", "authorized_keys", "passwordless", "deploy key"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remote username"
+            required: true
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "identity"
+            type: "string"
+            description: "Public key to install, e.g. -i ~/.ssh/id_ed25519.pub (leave blank for default)"
+            required: false
+            sub_command: "ls ~/.ssh/*.pub 2>/dev/null | awk '{print \"-i \"$1\",\"$1}'"
+          - name: "port"
+            type: "string"
+            description: "Custom SSH port, e.g. -p 2222 (leave blank for 22)"
+            required: false
+
+  - name: "ssh-keygen"
+    description: "SSH key pair generation and management"
+    options:
+      - name: "generate"
+        description: "Generate a new SSH key pair"
+        template: "ssh-keygen -t {{key_type}} -b {{bits}} -C '{{comment}}' -f {{output_file}}"
+        tags: ["new key", "create key", "keygen", "ed25519", "rsa"]
+        inputs:
+          - name: "key_type"
+            type: "string"
+            description: "Key type (ed25519, rsa, ecdsa)"
+            required: true
+            default: "ed25519"
+          - name: "bits"
+            type: "string"
+            description: "Key size in bits (for rsa: 4096; ignored for ed25519)"
+            required: false
+            default: "4096"
+          - name: "comment"
+            type: "string"
+            description: "Comment to embed in the public key (e.g. user@machine)"
+            required: false
+            default: ""
+          - name: "output_file"
+            type: "file"
+            description: "Output file path (private key)"
+            required: true
+            default: "~/.ssh/id_ed25519"
+
+      - name: "change-passphrase"
+        description: "Change or remove the passphrase of an existing private key"
+        template: "ssh-keygen -p -f {{key_file}}"
+        tags: ["passphrase", "password", "update key", "re-encrypt"]
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Path to the private key file"
+            required: true
+            sub_command: "ls ~/.ssh/id_* ~/.ssh/*.pem 2>/dev/null | grep -v '\\.pub$'"
+
+      - name: "show-fingerprint"
+        description: "Display the fingerprint and comment of a public key"
+        template: "ssh-keygen -lf {{key_file}}"
+        tags: ["fingerprint", "inspect", "verify", "hash"]
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Path to the public or private key file"
+            required: true
+            sub_command: "ls ~/.ssh/*.pub 2>/dev/null"
+
+      - name: "scan-host-key"
+        description: "Retrieve and display the public key fingerprint(s) of a remote host"
+        template: "ssh-keyscan{{port}} -t {{key_type}} {{host}}"
+        tags: ["scan", "host key", "fingerprint", "known hosts", "verify server"]
+        inputs:
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "key_type"
+            type: "string"
+            description: "Key type to fetch (ed25519, rsa, ecdsa)"
+            required: false
+            default: "ed25519"
+          - name: "port"
+            type: "string"
+            description: "Custom port, e.g. -p 2222 (leave blank for 22)"
+            required: false
+
+      - name: "add-to-known-hosts"
+        description: "Scan a host and append its key to ~/.ssh/known_hosts"
+        template: "ssh-keyscan{{port}} -t {{key_type}} {{host}} >> ~/.ssh/known_hosts"
+        tags: ["known hosts", "trust host", "add host", "authorize server"]
+        inputs:
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+            sub_command: "grep -E '^Host ' ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '*'"
+          - name: "key_type"
+            type: "string"
+            description: "Key type to fetch (ed25519, rsa, ecdsa)"
+            required: false
+            default: "ed25519"
+          - name: "port"
+            type: "string"
+            description: "Custom port, e.g. -p 2222 (leave blank for 22)"
+            required: false

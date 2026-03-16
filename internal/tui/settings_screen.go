@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -148,13 +149,15 @@ type SettingsScreenModel struct {
 	settings         config.AppSettings
 	selected         int
 	editing          bool
+	colorPickerMode  bool // true while the visual colour-picker overlay is active
+	pickerSel        int  // currently highlighted ANSI colour index (0-255)
 	confirmingBashrc bool   // waiting for y/n answer about bashrc alias
 	pendingAliasLine string // the exact alias line to be written
 	pendingName      string // the new app name being confirmed
 	input            textinput.Model
 	message          string
 	width            int
-	height            int
+	height           int
 }
 
 // NewSettingsScreenModel creates a settings screen loaded with the current settings.
@@ -205,6 +208,9 @@ func (m SettingsScreenModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
+		if m.colorPickerMode {
+			return m.updateColorPicker(msg)
+		}
 		if m.editing {
 			return m.updateEdit(msg)
 		}
@@ -301,6 +307,9 @@ func (m SettingsScreenModel) startEditing() (tea.Model, tea.Cmd) {
 	if e.isToggle {
 		return m.toggleBool()
 	}
+	if e.isColor {
+		return m.startColorPicker()
+	}
 	m.input.SetValue(e.getVal(m.settings))
 	m.input.Placeholder = e.placeholder
 	m.input.CursorEnd()
@@ -363,8 +372,159 @@ func (m SettingsScreenModel) updateEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, inputCmd
 }
 
-// View satisfies tea.Model.
+// ---- colour picker ----------------------------------------------------------
+
+// pickerCols returns the number of colour columns to render given the terminal
+// width. Each cell is 3 characters wide (3 block chars, no separator).
+func pickerCols(width int) int {
+	if width <= 0 {
+		width = 80
+	}
+	cols := (width - 4) / 3 // 4 chars left/right margin
+	if cols > 32 {
+		cols = 32
+	}
+	if cols < 8 {
+		cols = 8
+	}
+	return cols
+}
+
+// startColorPicker initialises the colour picker for the currently selected
+// colour entry, pre-selecting the entry's current ANSI value when possible.
+func (m SettingsScreenModel) startColorPicker() (tea.Model, tea.Cmd) {
+	sel := 0
+	cur := strings.TrimSpace(settingsEntries[m.selected].getVal(m.settings))
+	if n, err := strconv.Atoi(cur); err == nil && n >= 0 && n <= 255 {
+		sel = n
+	}
+	m.colorPickerMode = true
+	m.pickerSel = sel
+	m.editing = false
+	m.message = ""
+	return m, nil
+}
+
+// updateColorPicker handles key input while the colour-picker grid is visible.
+func (m SettingsScreenModel) updateColorPicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	cols := pickerCols(m.width)
+	switch msg.Type {
+	case tea.KeyCtrlC:
+		return m, tea.Quit
+	case tea.KeyEsc:
+		m.colorPickerMode = false
+		return m, nil
+	case tea.KeyEnter:
+		val := strconv.Itoa(m.pickerSel)
+		e := settingsEntries[m.selected]
+		e.setVal(&m.settings, val)
+		m.colorPickerMode = false
+		if svErr := config.SaveSettings(m.settings); svErr != nil {
+			m.message = StyleError.Render("Save failed: " + svErr.Error())
+			return m, nil
+		}
+		ApplyTheme(m.settings)
+		m.message = StyleInfo.Render(fmt.Sprintf("Updated \"%s\" → %s", e.label, val))
+		return m, func() tea.Msg { return themeChangedMsg{} }
+	case tea.KeyLeft:
+		if m.pickerSel > 0 {
+			m.pickerSel--
+		}
+	case tea.KeyRight:
+		if m.pickerSel < 255 {
+			m.pickerSel++
+		}
+	case tea.KeyUp:
+		if m.pickerSel >= cols {
+			m.pickerSel -= cols
+		}
+	case tea.KeyDown:
+		if m.pickerSel+cols <= 255 {
+			m.pickerSel += cols
+		}
+	case tea.KeyRunes:
+		if string(msg.Runes) == "t" || string(msg.Runes) == "T" {
+			// Fall back to the text-input editor for hex or out-of-range values.
+			m.colorPickerMode = false
+			return m.startEditing()
+		}
+	}
+	return m, nil
+}
+
+// viewColorPicker renders the full-screen colour-picker overlay.
+func (m SettingsScreenModel) viewColorPicker() string {
+	w := m.width
+	if w <= 0 {
+		w = 80
+	}
+	h := m.height
+	if h <= 0 {
+		h = 24
+	}
+
+	var b strings.Builder
+
+	// Title bar.
+	title := StyleTitle.Width(w).Render(
+		"⚡ " + AppDisplayName + "  " + StyleResultDesc.Render("Settings › Colour Picker"),
+	)
+	b.WriteString(title + "\n\n")
+
+	// Entry label and description.
+	e := settingsEntries[m.selected]
+	b.WriteString("  " + StyleResultCommand.Render(e.label) + "  " + StyleResultDesc.Render(e.desc) + "\n")
+	b.WriteString(StyleSeparator.Render("  "+strings.Repeat("─", w-4)) + "\n\n")
+
+	// Colour grid: all 256 ANSI colours, 3 chars per cell.
+	cols := pickerCols(w)
+	margin := "  "
+	for i := 0; i < 256; i++ {
+		if i%cols == 0 {
+			b.WriteString(margin)
+		}
+		cStr := strconv.Itoa(i)
+		cell := lipgloss.NewStyle().Background(lipgloss.Color(cStr))
+		if i == m.pickerSel {
+			b.WriteString(cell.Foreground(lipgloss.Color("255")).Bold(true).Render(" ◆ "))
+		} else {
+			b.WriteString(cell.Render("   "))
+		}
+		if i%cols == cols-1 || i == 255 {
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("\n")
+
+	// Preview of the currently highlighted colour.
+	swatch := lipgloss.NewStyle().
+		Background(lipgloss.Color(strconv.Itoa(m.pickerSel))).
+		Foreground(lipgloss.Color(strconv.Itoa(m.pickerSel))).
+		Render("        ")
+	b.WriteString("  " + StyleResultCommand.Render(fmt.Sprintf("ANSI %d", m.pickerSel)) + "  " + swatch + "\n")
+	b.WriteString(StyleSeparator.Render("  "+strings.Repeat("─", w-4)) + "\n")
+
+	// Pad to fill the terminal.
+	used := strings.Count(b.String(), "\n") + 2
+	for i := used; i < h-1; i++ {
+		b.WriteString("\n")
+	}
+
+	// Footer.
+	keys := StyleStatusKey.Render(" ↑↓←→") + StyleStatus.Render(" navigate") +
+		StyleStatusKey.Render("  Enter") + StyleStatus.Render(" select") +
+		StyleStatusKey.Render("  t") + StyleStatus.Render(" type value") +
+		StyleStatusKey.Render("  Esc") + StyleStatus.Render(" cancel")
+	b.WriteString(renderFooter(w, keys, footerVersion()))
+
+	return b.String()
+}
+
+
 func (m SettingsScreenModel) View() string {
+	if m.colorPickerMode {
+		return m.viewColorPicker()
+	}
 	w := m.width
 	if w <= 0 {
 		w = 80
@@ -465,7 +625,9 @@ func (m SettingsScreenModel) View() string {
 		b.WriteString(StyleInputLabel.Render(
 			fmt.Sprintf("  Edit \"%s\" (current: %s):", e.label, e.getVal(m.settings)),
 		) + "\n")
-		b.WriteString("  " + StyleInputFocused.Width(34).Render(m.input.View()) + "\n")
+		b.WriteString(lipgloss.NewStyle().MarginLeft(2).Render(
+			StyleInputFocused.Width(34).Render(m.input.View()),
+		) + "\n")
 		b.WriteString(StyleResultDesc.Render("  Enter to confirm · Esc to cancel") + "\n")
 	}
 
@@ -481,7 +643,7 @@ func (m SettingsScreenModel) View() string {
 	}
 
 	// ── Status bar ─────────────────────────────────────────────────────────
-	keys := StyleStatusKey.Render(" e") + StyleStatus.Render(" edit") +
+	keys := StyleStatusKey.Render(" e") + StyleStatus.Render(" edit / pick colour") +
 		StyleStatusKey.Render("  r") + StyleStatus.Render(" reset") +
 		StyleStatusKey.Render("  R") + StyleStatus.Render(" reset all") +
 		StyleStatusKey.Render("  Esc") + StyleStatus.Render(" back")

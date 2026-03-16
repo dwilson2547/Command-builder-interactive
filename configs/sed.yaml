@@ -1,0 +1,381 @@
+name: "sed"
+description: "Stream editor: substitute, filter, delete, insert and transform text"
+version: "1.0.0"
+commands:
+  - name: "substitute"
+    description: "Find and replace text patterns"
+    options:
+      - name: "replace-first"
+        description: "Replace the first occurrence of a pattern per line (stdin / pipe)"
+        template: "sed 's/{{find}}/{{replace}}/'"
+        tags: ["find replace", "first match", "swap"]
+        inputs:
+          - name: "find"
+            type: "string"
+            description: "Pattern to find (basic regex)"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string (use & to refer to the matched text)"
+            required: true
+
+      - name: "replace-all"
+        description: "Replace every occurrence of a pattern per line (stdin / pipe)"
+        template: "sed 's/{{find}}/{{replace}}/g'"
+        tags: ["global replace", "all occurrences", "gsub"]
+        inputs:
+          - name: "find"
+            type: "string"
+            description: "Pattern to find (basic regex)"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string"
+            required: true
+
+      - name: "replace-nth"
+        description: "Replace only the Nth occurrence of a pattern per line"
+        template: "sed 's/{{find}}/{{replace}}/{{n}}'"
+        tags: ["nth match", "second occurrence", "specific match"]
+        inputs:
+          - name: "find"
+            type: "string"
+            description: "Pattern to find"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string"
+            required: true
+          - name: "n"
+            type: "string"
+            description: "Occurrence number to replace (e.g. 2 for the second match)"
+            required: true
+            default: "2"
+
+      - name: "replace-in-range"
+        description: "Replace a pattern only within a range of line numbers"
+        template: "sed '{{start_line}},{{end_line}}s/{{find}}/{{replace}}/g'"
+        tags: ["scoped replace", "line range", "address range"]
+        inputs:
+          - name: "start_line"
+            type: "string"
+            description: "First line of the range"
+            required: true
+            default: "1"
+          - name: "end_line"
+            type: "string"
+            description: "Last line of the range (use $ for end of file)"
+            required: true
+            default: "$"
+          - name: "find"
+            type: "string"
+            description: "Pattern to find"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string"
+            required: true
+
+      - name: "replace-in-matching-lines"
+        description: "Replace a pattern only in lines that also match an address pattern"
+        template: "sed '/{{address}}/s/{{find}}/{{replace}}/g'"
+        tags: ["conditional replace", "scoped substitution"]
+        inputs:
+          - name: "address"
+            type: "string"
+            description: "Pattern that selects which lines to operate on"
+            required: true
+          - name: "find"
+            type: "string"
+            description: "Pattern to replace within those lines"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string"
+            required: true
+
+      - name: "replace-extended"
+        description: "Replace using extended regular expressions (-E)"
+        template: "sed -E 's/{{find}}/{{replace}}/g'"
+        tags: ["extended regex", "ERE", "groups", "alternation"]
+        inputs:
+          - name: "find"
+            type: "string"
+            description: "Extended regex pattern (supports +, ?, |, () without backslash)"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string (use \\1 \\2 for capture groups)"
+            required: true
+
+  - name: "lines"
+    description: "Print, filter and delete lines"
+    options:
+      - name: "print-matching"
+        description: "Print only lines matching a pattern (like grep)"
+        template: "sed -n '/{{pattern}}/p'"
+        tags: ["grep", "filter lines", "matching lines"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to match"
+            required: true
+
+      - name: "print-range"
+        description: "Print a specific range of lines"
+        template: "sed -n '{{start_line}},{{end_line}}p'"
+        tags: ["line range", "slice", "head tail"]
+        inputs:
+          - name: "start_line"
+            type: "string"
+            description: "First line to print"
+            required: true
+            default: "1"
+          - name: "end_line"
+            type: "string"
+            description: "Last line to print (use $ for end of file)"
+            required: true
+            default: "10"
+
+      - name: "delete-matching"
+        description: "Delete lines matching a pattern"
+        template: "sed '/{{pattern}}/d'"
+        tags: ["remove lines", "filter out", "grep -v"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern — matching lines will be deleted"
+            required: true
+
+      - name: "delete-not-matching"
+        description: "Delete lines that do NOT match a pattern (keep only matching lines)"
+        template: "sed '/{{pattern}}/!d'"
+        tags: ["keep matching", "inverse delete", "grep equivalent"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern — non-matching lines will be deleted"
+            required: true
+
+      - name: "delete-range"
+        description: "Delete a range of lines"
+        template: "sed '{{start_line}},{{end_line}}d'"
+        tags: ["remove lines", "line range", "strip header"]
+        inputs:
+          - name: "start_line"
+            type: "string"
+            description: "First line to delete"
+            required: true
+            default: "1"
+          - name: "end_line"
+            type: "string"
+            description: "Last line to delete"
+            required: true
+            default: "5"
+
+      - name: "delete-empty"
+        description: "Delete blank lines (lines containing only whitespace)"
+        template: "sed '/^[[:space:]]*$/d'"
+        tags: ["remove blank lines", "strip empty", "compact"]
+        inputs: []
+
+      - name: "delete-comments"
+        description: "Delete comment lines starting with #"
+        template: "sed '/^[[:space:]]*{{comment_char}}/d'"
+        tags: ["strip comments", "remove comments", "clean config"]
+        inputs:
+          - name: "comment_char"
+            type: "string"
+            description: "Comment character to remove lines starting with"
+            required: true
+            default: "#"
+
+  - name: "insert"
+    description: "Insert or append lines relative to a pattern or line number"
+    options:
+      - name: "insert-before"
+        description: "Insert a line of text before every line matching a pattern"
+        template: "sed '/{{pattern}}/i\\{{text}}'"
+        tags: ["prepend line", "add before", "insert above"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern that identifies the target line"
+            required: true
+          - name: "text"
+            type: "string"
+            description: "Text to insert on the new line before the match"
+            required: true
+
+      - name: "append-after"
+        description: "Append a line of text after every line matching a pattern"
+        template: "sed '/{{pattern}}/a\\{{text}}'"
+        tags: ["add after", "append line", "insert below"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern that identifies the target line"
+            required: true
+          - name: "text"
+            type: "string"
+            description: "Text to append on the new line after the match"
+            required: true
+
+      - name: "insert-at-line"
+        description: "Insert a line of text before a specific line number"
+        template: "sed '{{line_number}}i\\{{text}}'"
+        tags: ["insert line number", "prepend at line"]
+        inputs:
+          - name: "line_number"
+            type: "string"
+            description: "Line number before which to insert"
+            required: true
+          - name: "text"
+            type: "string"
+            description: "Text to insert"
+            required: true
+
+  - name: "inplace"
+    description: "Edit files in-place"
+    options:
+      - name: "replace-in-file"
+        description: "Replace a pattern in a file in-place (no backup)"
+        template: "sed -i 's/{{find}}/{{replace}}/g' {{file}}"
+        tags: ["edit file", "in-place", "modify file"]
+        inputs:
+          - name: "file"
+            type: "file"
+            description: "File to edit"
+            required: true
+          - name: "find"
+            type: "string"
+            description: "Pattern to find"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string"
+            required: true
+
+      - name: "replace-in-file-backup"
+        description: "Replace a pattern in a file in-place, keeping a backup"
+        template: "sed -i{{backup_ext}} 's/{{find}}/{{replace}}/g' {{file}}"
+        tags: ["edit file", "in-place backup", "safe edit"]
+        inputs:
+          - name: "file"
+            type: "file"
+            description: "File to edit"
+            required: true
+          - name: "find"
+            type: "string"
+            description: "Pattern to find"
+            required: true
+          - name: "replace"
+            type: "string"
+            description: "Replacement string"
+            required: true
+          - name: "backup_ext"
+            type: "string"
+            description: "Backup file extension, e.g. .bak"
+            required: true
+            default: ".bak"
+
+      - name: "delete-lines-in-file"
+        description: "Delete lines matching a pattern from a file in-place"
+        template: "sed -i{{backup_ext}} '/{{pattern}}/d' {{file}}"
+        tags: ["remove lines from file", "filter file", "edit file"]
+        inputs:
+          - name: "file"
+            type: "file"
+            description: "File to edit"
+            required: true
+          - name: "pattern"
+            type: "string"
+            description: "Pattern — matching lines will be deleted"
+            required: true
+          - name: "backup_ext"
+            type: "string"
+            description: "Backup extension, e.g. .bak (leave blank for no backup)"
+            required: false
+
+      - name: "multi-replace-in-file"
+        description: "Apply multiple substitutions to a file in one pass"
+        template: "sed -i{{backup_ext}} -e 's/{{find1}}/{{replace1}}/g' -e 's/{{find2}}/{{replace2}}/g' {{file}}"
+        tags: ["multiple replace", "multi expression", "batch replace"]
+        inputs:
+          - name: "file"
+            type: "file"
+            description: "File to edit"
+            required: true
+          - name: "find1"
+            type: "string"
+            description: "First pattern to find"
+            required: true
+          - name: "replace1"
+            type: "string"
+            description: "First replacement"
+            required: true
+          - name: "find2"
+            type: "string"
+            description: "Second pattern to find"
+            required: true
+          - name: "replace2"
+            type: "string"
+            description: "Second replacement"
+            required: true
+          - name: "backup_ext"
+            type: "string"
+            description: "Backup extension, e.g. .bak (leave blank for no backup)"
+            required: false
+
+  - name: "transform"
+    description: "Common text transformations"
+    options:
+      - name: "trim-leading-whitespace"
+        description: "Remove leading whitespace from each line"
+        template: "sed 's/^[[:space:]]*//'"
+        tags: ["ltrim", "strip indent", "remove spaces"]
+        inputs: []
+
+      - name: "trim-trailing-whitespace"
+        description: "Remove trailing whitespace from each line"
+        template: "sed 's/[[:space:]]*$//'"
+        tags: ["rtrim", "strip trailing", "remove trailing spaces"]
+        inputs: []
+
+      - name: "trim-whitespace"
+        description: "Remove both leading and trailing whitespace from each line"
+        template: "sed 's/^[[:space:]]*//;s/[[:space:]]*$//'"
+        tags: ["trim", "strip whitespace", "both sides"]
+        inputs: []
+
+      - name: "add-prefix"
+        description: "Prepend a string to every line"
+        template: "sed 's/^/{{prefix}}/'"
+        tags: ["prepend", "line prefix", "indent"]
+        inputs:
+          - name: "prefix"
+            type: "string"
+            description: "String to prepend to each line"
+            required: true
+
+      - name: "add-suffix"
+        description: "Append a string to every line"
+        template: "sed 's/$/{{suffix}}/'"
+        tags: ["append suffix", "line ending", "add end"]
+        inputs:
+          - name: "suffix"
+            type: "string"
+            description: "String to append to each line"
+            required: true
+
+      - name: "number-lines"
+        description: "Print each line preceded by its line number"
+        template: "sed '='"
+        tags: ["line numbers", "cat -n", "number output"]
+        inputs: []
+
+      - name: "double-space"
+        description: "Double-space the output by inserting a blank line after each line"
+        template: "sed 'G'"
+        tags: ["spacing", "blank lines", "format"]
+        inputs: []

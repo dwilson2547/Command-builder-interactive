@@ -325,6 +325,27 @@ func (m *Manager) RenameConfig(oldName, newName string) error {
 	return nil
 }
 
+// FindOption looks up a specific Config, Command, and Option by name. Returns
+// nil values if any level of the hierarchy is not found.
+func (m *Manager) FindOption(configName, commandName, optionName string) (*Config, *Command, *Option) {
+	cfg := m.GetConfig(configName)
+	if cfg == nil {
+		return nil, nil, nil
+	}
+	for i := range cfg.Commands {
+		if cfg.Commands[i].Name == commandName {
+			cmd := &cfg.Commands[i]
+			for j := range cmd.Options {
+				if cmd.Options[j].Name == optionName {
+					return cfg, cmd, &cmd.Options[j]
+				}
+			}
+			return nil, nil, nil
+		}
+	}
+	return nil, nil, nil
+}
+
 // sanitizeName converts a config name to a safe filename stem.
 func sanitizeName(name string) string {
 	replacer := strings.NewReplacer(

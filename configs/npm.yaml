@@ -1,0 +1,424 @@
+name: "npm"
+description: "Node.js package manager: install, scripts, publish, audit, workspaces, config"
+version: "1.0.0"
+commands:
+  - name: "packages"
+    description: "Install, uninstall and update packages"
+    options:
+      - name: "install"
+        description: "Install one or more packages and save to package.json"
+        template: "npm install{{save_dev}}{{save_exact}}{{global}}{{legacy_peer_deps}} {{packages}}"
+        tags: ["add", "get", "download", "npm i"]
+        inputs:
+          - name: "packages"
+            type: "string"
+            description: "Package name(s), e.g. express or 'react react-dom'"
+            required: true
+          - name: "save_dev"
+            type: "flag"
+            description: "Save as a dev dependency (-D)"
+            required: false
+            default: " -D"
+          - name: "save_exact"
+            type: "flag"
+            description: "Save exact version instead of range (-E)"
+            required: false
+            default: " -E"
+          - name: "global"
+            type: "flag"
+            description: "Install globally (-g)"
+            required: false
+            default: " -g"
+          - name: "legacy_peer_deps"
+            type: "flag"
+            description: "Ignore peer dependency conflicts (--legacy-peer-deps)"
+            required: false
+            default: " --legacy-peer-deps"
+
+      - name: "install-all"
+        description: "Install all dependencies from package.json"
+        template: "npm install{{frozen}}{{omit_dev}}"
+        tags: ["npm i", "restore", "bootstrap", "setup"]
+        inputs:
+          - name: "frozen"
+            type: "flag"
+            description: "Fail if package-lock.json would be changed (--frozen-lockfile via ci)"
+            required: false
+            default: " --frozen-lockfile"
+          - name: "omit_dev"
+            type: "flag"
+            description: "Skip devDependencies (--omit=dev)"
+            required: false
+            default: " --omit=dev"
+
+      - name: "ci"
+        description: "Clean install from lockfile — faster, stricter than npm install"
+        template: "npm ci{{omit_dev}}"
+        tags: ["clean install", "lockfile", "reproducible", "ci cd"]
+        inputs:
+          - name: "omit_dev"
+            type: "flag"
+            description: "Skip devDependencies (--omit=dev)"
+            required: false
+            default: " --omit=dev"
+
+      - name: "uninstall"
+        description: "Uninstall a package and remove it from package.json"
+        template: "npm uninstall{{global}} {{package}}"
+        tags: ["remove", "delete", "npm rm"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name to uninstall"
+            required: true
+            sub_command: "node -e \"try{const p=require('./package.json');const all={...p.dependencies,...p.devDependencies,...p.peerDependencies};Object.entries(all).forEach(([k,v])=>console.log(k+','+v))}catch(e){}\" 2>/dev/null"
+          - name: "global"
+            type: "flag"
+            description: "Uninstall a global package (-g)"
+            required: false
+            default: " -g"
+
+      - name: "update"
+        description: "Update package(s) to the latest version within semver range"
+        template: "npm update{{global}} {{packages}}"
+        tags: ["upgrade", "latest"]
+        inputs:
+          - name: "packages"
+            type: "string"
+            description: "Package name(s) to update (leave blank to update all)"
+            required: false
+            sub_command: "node -e \"try{const p=require('./package.json');const all={...p.dependencies,...p.devDependencies};Object.entries(all).forEach(([k,v])=>console.log(k+','+v))}catch(e){}\" 2>/dev/null"
+          - name: "global"
+            type: "flag"
+            description: "Update a global package (-g)"
+            required: false
+            default: " -g"
+
+      - name: "dedupe"
+        description: "Reduce package duplication in node_modules"
+        template: "npm dedupe"
+        tags: ["dedup", "reduce", "flatten"]
+        inputs: []
+
+  - name: "scripts"
+    description: "Run package.json scripts"
+    options:
+      - name: "run"
+        description: "Run a script defined in package.json"
+        template: "npm run {{script}} {{args}}"
+        tags: ["execute", "task", "build", "start"]
+        inputs:
+          - name: "script"
+            type: "string"
+            description: "Script name"
+            required: true
+            sub_command: "node -e \"try{const p=require('./package.json');Object.entries(p.scripts||{}).forEach(([k,v])=>console.log(k+','+v))}catch(e){}\" 2>/dev/null"
+          - name: "args"
+            type: "string"
+            description: "Extra arguments to pass after -- (leave blank to skip)"
+            required: false
+
+      - name: "start"
+        description: "Run the start script (or node server.js)"
+        template: "npm start"
+        tags: ["server", "run app"]
+        inputs: []
+
+      - name: "test"
+        description: "Run the test script"
+        template: "npm test {{args}}"
+        tags: ["unit test", "jest", "mocha", "vitest"]
+        inputs:
+          - name: "args"
+            type: "string"
+            description: "Extra arguments to pass to the test runner (leave blank to skip)"
+            required: false
+
+      - name: "build"
+        description: "Run the build script"
+        template: "npm run build"
+        tags: ["compile", "bundle", "webpack", "vite"]
+        inputs: []
+
+      - name: "exec"
+        description: "Execute a command from a locally installed package (npx)"
+        template: "npx{{yes}} {{command}}"
+        tags: ["npx", "run binary", "execute package"]
+        inputs:
+          - name: "command"
+            type: "string"
+            description: "Command to run, e.g. tsc --version or create-react-app my-app"
+            required: true
+          - name: "yes"
+            type: "flag"
+            description: "Auto-install the package without prompting (-y)"
+            required: false
+            default: " -y"
+
+  - name: "inspect"
+    description: "Inspect installed packages and the dependency tree"
+    options:
+      - name: "list"
+        description: "List installed packages"
+        template: "npm list{{global}}{{all}} --depth={{depth}}"
+        tags: ["ls", "show packages", "installed"]
+        inputs:
+          - name: "depth"
+            type: "string"
+            description: "Dependency tree depth (0 = top-level only)"
+            required: true
+            default: "0"
+          - name: "global"
+            type: "flag"
+            description: "List globally installed packages (-g)"
+            required: false
+            default: " -g"
+          - name: "all"
+            type: "flag"
+            description: "Include all dependencies including transitive (--all)"
+            required: false
+            default: " --all"
+
+      - name: "outdated"
+        description: "Check for outdated packages"
+        template: "npm outdated{{global}}"
+        tags: ["updates", "stale", "versions"]
+        inputs:
+          - name: "global"
+            type: "flag"
+            description: "Check global packages (-g)"
+            required: false
+            default: " -g"
+
+      - name: "info"
+        description: "Show registry metadata for a package"
+        template: "npm info {{package}} {{field}}"
+        tags: ["view", "show", "registry", "metadata"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name (optionally with @version, e.g. react@18)"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Specific field to display, e.g. version, description, dist-tags (leave blank for all)"
+            required: false
+
+      - name: "why"
+        description: "Explain why a package is installed in the dependency tree"
+        template: "npm explain {{package}}"
+        tags: ["explain", "dependency reason", "who needs"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name"
+            required: true
+            sub_command: "node -e \"try{const p=require('./package.json');const all={...p.dependencies,...p.devDependencies};Object.entries(all).forEach(([k,v])=>console.log(k+','+v))}catch(e){}\" 2>/dev/null"
+
+  - name: "audit"
+    description: "Scan for and fix security vulnerabilities"
+    options:
+      - name: "audit"
+        description: "Audit installed packages for known vulnerabilities"
+        template: "npm audit{{json}}{{audit_level}}"
+        tags: ["security", "vulnerabilities", "cve"]
+        inputs:
+          - name: "audit_level"
+            type: "string"
+            description: "Minimum severity to report, e.g. --audit-level=high (leave blank for all)"
+            required: false
+          - name: "json"
+            type: "flag"
+            description: "Output as JSON (--json)"
+            required: false
+            default: " --json"
+
+      - name: "audit-fix"
+        description: "Automatically fix vulnerabilities by updating packages"
+        template: "npm audit fix{{force}}{{dry_run}}"
+        tags: ["security fix", "patch", "auto fix"]
+        inputs:
+          - name: "force"
+            type: "flag"
+            description: "Allow major version bumps to fix vulnerabilities (--force)"
+            required: false
+            default: " --force"
+          - name: "dry_run"
+            type: "flag"
+            description: "Show what would be changed without applying (--dry-run)"
+            required: false
+            default: " --dry-run"
+
+  - name: "init"
+    description: "Create and manage package.json"
+    options:
+      - name: "init"
+        description: "Create a new package.json interactively"
+        template: "npm init{{yes}}"
+        tags: ["new project", "create package.json", "setup"]
+        inputs:
+          - name: "yes"
+            type: "flag"
+            description: "Accept all defaults without prompting (-y)"
+            required: false
+            default: " -y"
+
+      - name: "init-template"
+        description: "Scaffold a project using a create-* package"
+        template: "npm create {{template}}{{args}}"
+        tags: ["scaffold", "create app", "starter", "vite", "react"]
+        inputs:
+          - name: "template"
+            type: "string"
+            description: "Template package, e.g. vite, react-app, next-app"
+            required: true
+          - name: "args"
+            type: "string"
+            description: "Additional arguments (e.g. project name or flags)"
+            required: false
+
+  - name: "publish"
+    description: "Pack and publish packages to a registry"
+    options:
+      - name: "pack"
+        description: "Create a tarball from the package without publishing"
+        template: "npm pack {{directory}}"
+        tags: ["tarball", "tgz", "bundle", "preview publish"]
+        inputs:
+          - name: "directory"
+            type: "dir"
+            description: "Directory to pack (leave blank for current)"
+            required: false
+            default: "."
+
+      - name: "publish"
+        description: "Publish the package to a registry"
+        template: "npm publish{{dry_run}}{{access}} {{tag}}"
+        tags: ["release", "deploy", "registry", "upload"]
+        inputs:
+          - name: "tag"
+            type: "string"
+            description: "Distribution tag, e.g. --tag beta (leave blank for 'latest')"
+            required: false
+          - name: "access"
+            type: "string"
+            description: "Access level for scoped packages, e.g. --access public (leave blank to skip)"
+            required: false
+          - name: "dry_run"
+            type: "flag"
+            description: "Show what would be published without uploading (--dry-run)"
+            required: false
+            default: " --dry-run"
+
+      - name: "deprecate"
+        description: "Deprecate a package version with a warning message"
+        template: "npm deprecate {{package}}@{{version}} '{{message}}'"
+        tags: ["sunset", "warn", "end of life"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name"
+            required: true
+          - name: "version"
+            type: "string"
+            description: "Version or range to deprecate, e.g. 1.0.0 or <2.0.0"
+            required: true
+          - name: "message"
+            type: "string"
+            description: "Deprecation warning message shown to users"
+            required: true
+
+      - name: "dist-tag-add"
+        description: "Add a distribution tag to a specific version"
+        template: "npm dist-tag add {{package}}@{{version}} {{tag}}"
+        tags: ["tag", "latest", "beta", "next"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package name"
+            required: true
+          - name: "version"
+            type: "string"
+            description: "Exact version to tag, e.g. 1.2.3"
+            required: true
+          - name: "tag"
+            type: "string"
+            description: "Tag name, e.g. latest, beta, next"
+            required: true
+            default: "latest"
+
+  - name: "cache"
+    description: "Manage the npm cache"
+    options:
+      - name: "verify"
+        description: "Verify the cache and garbage-collect stale entries"
+        template: "npm cache verify"
+        tags: ["check cache", "clean cache"]
+        inputs: []
+
+      - name: "clean"
+        description: "Delete all cached data"
+        template: "npm cache clean --force"
+        tags: ["clear cache", "purge", "delete cache"]
+        inputs: []
+
+  - name: "config"
+    description: "Read and write npm configuration"
+    options:
+      - name: "list"
+        description: "List npm configuration"
+        template: "npm config list{{long}}"
+        tags: ["show config", "settings", "npmrc"]
+        inputs:
+          - name: "long"
+            type: "flag"
+            description: "Show all defaults as well (-l)"
+            required: false
+            default: " -l"
+
+      - name: "set"
+        description: "Set a configuration value"
+        template: "npm config set {{key}} {{value}} {{location}}"
+        tags: ["configure", "settings"]
+        inputs:
+          - name: "key"
+            type: "string"
+            description: "Config key, e.g. init-author-name or save-exact"
+            required: true
+          - name: "value"
+            type: "string"
+            description: "Value to set"
+            required: true
+          - name: "location"
+            type: "string"
+            description: "Config location: --global or --userconfig ~/.npmrc (leave blank for project)"
+            required: false
+
+      - name: "set-registry"
+        description: "Set the default package registry URL"
+        template: "npm config set registry {{registry_url}} {{location}}"
+        tags: ["private registry", "artifactory", "nexus", "verdaccio"]
+        inputs:
+          - name: "registry_url"
+            type: "string"
+            description: "Registry URL, e.g. https://registry.npmjs.org or a private registry"
+            required: true
+            default: "https://registry.npmjs.org"
+          - name: "location"
+            type: "string"
+            description: "Config location: --global or leave blank for project .npmrc"
+            required: false
+
+      - name: "set-scope-registry"
+        description: "Route a package scope to a specific registry"
+        template: "npm config set {{scope}}:registry {{registry_url}}"
+        tags: ["scoped registry", "private packages", "@scope"]
+        inputs:
+          - name: "scope"
+            type: "string"
+            description: "Package scope without @, e.g. mycompany"
+            required: true
+          - name: "registry_url"
+            type: "string"
+            description: "Registry URL for this scope"
+            required: true

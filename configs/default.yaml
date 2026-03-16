@@ -642,6 +642,7 @@ commands:
             type: "string"
             description: "Container name or ID"
             required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Image}}'"
           - name: "command"
             type: "string"
             description: "Command to execute"
@@ -667,6 +668,7 @@ commands:
             type: "string"
             description: "Container name or ID"
             required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Image}}'"
       - name: "logs"
         description: "View container logs"
         template: "docker logs -f --tail={{lines}} {{container}}"
@@ -675,6 +677,7 @@ commands:
             type: "string"
             description: "Container name or ID"
             required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Image}}'"
           - name: "lines"
             type: "string"
             description: "Number of tail lines"

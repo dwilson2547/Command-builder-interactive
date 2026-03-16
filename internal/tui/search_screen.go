@@ -24,6 +24,11 @@ type SearchModel struct {
 	completions   []string
 	completionIdx int
 	completionBase string
+
+	// star mode — active when the query is "/s" or "/s <term>"
+	starMode     bool
+	starList     []config.Star
+	starSelected int
 }
 
 // NewSearchModel creates a new search screen bound to the given manager.
@@ -75,13 +80,21 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyEnter:
-			// Handle config/import/settings commands.
+			// Handle config/import/settings/stars commands.
 			query := strings.TrimSpace(m.input.Value())
 			if strings.HasPrefix(query, "/config") {
 				return m, func() tea.Msg { return goToConfigMsg{} }
 			}
 			if strings.HasPrefix(query, "/settings") {
 				return m, func() tea.Msg { return goToSettingsMsg{} }
+			}
+			// Star mode: open the selected starred command.
+			if m.starMode {
+				if len(m.starList) == 0 {
+					return m, nil
+				}
+				star := m.starList[m.starSelected]
+				return m, func() tea.Msg { return selectStarMsg{star: star} }
 			}
 			if strings.HasPrefix(query, "/import ") {
 				target := strings.TrimSpace(strings.TrimPrefix(query, "/import "))
@@ -101,6 +114,12 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyUp:
+			if m.starMode {
+				if m.starSelected > 0 {
+					m.starSelected--
+				}
+				return m, nil
+			}
 			if m.selectedIdx > 0 {
 				m.selectedIdx--
 				m.ensureVisible()
@@ -108,6 +127,12 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyDown:
+			if m.starMode {
+				if m.starSelected < len(m.starList)-1 {
+					m.starSelected++
+				}
+				return m, nil
+			}
 			if m.selectedIdx < len(m.results)-1 {
 				m.selectedIdx++
 				m.ensureVisible()
@@ -128,6 +153,10 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyTab:
+			// In star mode Tab is a no-op (no path completion).
+			if m.starMode {
+				return m, nil
+			}
 			query := m.input.Value()
 			if !strings.HasPrefix(query, "/import ") {
 				return m, nil
@@ -167,6 +196,17 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle star-mode key actions that need rune inspection.
+		if m.starMode {
+			if msg.Type == tea.KeyRunes {
+				if string(msg.Runes) == "d" || string(msg.Runes) == "D" {
+					return m.deleteSelectedStar()
+				}
+			}
+			// Swallow all other keys in star mode so they don't reach the input.
+			return m, nil
+		}
+
 	case importURLMsg:
 		cfg, err := m.mgr.ImportConfigFromURL(msg.url)
 		if err != nil {
@@ -201,25 +241,56 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	query := m.input.Value()
 	if query != prevQuery {
-		// Reset completions when the path portion changes (manual edit).
-		if strings.HasPrefix(query, "/import ") {
-			partial := strings.TrimPrefix(query, "/import ")
-			if partial != m.completionBase {
+		isStarQuery := (query == "/s" || strings.HasPrefix(query, "/s ")) &&
+			!strings.HasPrefix(query, "/settings")
+
+		if isStarQuery {
+			// Enter star mode: load stars and display them inline.
+			m.starMode = true
+			allStars := config.LoadStars()
+			term := strings.TrimSpace(strings.TrimPrefix(query, "/s"))
+			if term == "" {
+				m.starList = allStars
+			} else {
+				term = strings.ToLower(term)
+				filtered := allStars[:0]
+				for _, s := range allStars {
+					if strings.Contains(strings.ToLower(s.DisplayName()), term) ||
+						strings.Contains(strings.ToLower(s.CommandName), term) ||
+						strings.Contains(strings.ToLower(s.OptionName), term) {
+						filtered = append(filtered, s)
+					}
+				}
+				m.starList = filtered
+			}
+			m.starSelected = 0
+			m.completions = nil
+			m.completionIdx = -1
+			m.completionBase = ""
+			m.message = ""
+		} else {
+			m.starMode = false
+			m.starList = nil
+			// Reset completions when the path portion changes (manual edit).
+			if strings.HasPrefix(query, "/import ") {
+				partial := strings.TrimPrefix(query, "/import ")
+				if partial != m.completionBase {
+					m.completions = nil
+					m.completionIdx = -1
+					m.completionBase = ""
+				}
+			} else {
 				m.completions = nil
 				m.completionIdx = -1
 				m.completionBase = ""
 			}
-		} else {
-			m.completions = nil
-			m.completionIdx = -1
-			m.completionBase = ""
-		}
-		// Rerun search only for non-special queries.
-		if !strings.HasPrefix(query, "/config") && !strings.HasPrefix(query, "/import") && !strings.HasPrefix(query, "/settings") {
-			m.results = runSearch(query, m.mgr)
-			m.selectedIdx = 0
-			m.scrollTop = 0
-			m.message = ""
+			// Rerun search only for non-special queries.
+			if !strings.HasPrefix(query, "/config") && !strings.HasPrefix(query, "/import") && !strings.HasPrefix(query, "/settings") {
+				m.results = runSearch(query, m.mgr)
+				m.selectedIdx = 0
+				m.scrollTop = 0
+				m.message = ""
+			}
 		}
 	}
 
@@ -251,9 +322,14 @@ func (m SearchModel) View() string {
 
 	// ── Hint line ──────────────────────────────────────────────────────────
 	inImport := strings.HasPrefix(m.input.Value(), "/import ")
-	hintText := " ↑↓ navigate · Enter select · /default · /all · /<config> · /import <url or path> · /settings · Ctrl+C quit"
-	if inImport {
+	var hintText string
+	switch {
+	case m.starMode:
+		hintText = fmt.Sprintf(" %d starred · ↑↓ navigate · Enter open · d delete · Esc or clear to exit", len(m.starList))
+	case inImport:
 		hintText = " Enter to import · Tab to autocomplete path · Esc clears"
+	default:
+		hintText = " ↑↓ navigate · Enter select · /default · /all · /<config> · /import <url or path> · /s stars · /settings · Ctrl+C quit"
 	}
 	hint := StyleResultDesc.Render(hintText)
 	b.WriteString(hint + "\n")
@@ -278,6 +354,30 @@ func (m SearchModel) View() string {
 
 	start := m.scrollTop
 	end := min(start+visRows, len(m.results))
+
+	// ── Star mode: show starred commands instead of search results ──────────
+	if m.starMode {
+		if len(m.starList) == 0 {
+			b.WriteString(StyleResultDesc.Padding(0, 2).Render(
+				"No starred commands yet — fill a form and press * to star it.",
+			) + "\n")
+			for i := 1; i < visRows; i++ {
+				b.WriteString("\n")
+			}
+		} else {
+			shown := min(len(m.starList), visRows)
+			for i := 0; i < shown; i++ {
+				b.WriteString(m.renderStarResult(m.starList[i], i == m.starSelected, w) + "\n")
+			}
+			for i := shown; i < visRows; i++ {
+				b.WriteString("\n")
+			}
+		}
+		statusLeft := StyleStatus.Render(fmt.Sprintf(" %d starred", len(m.starList)))
+		statusRight := StyleStatus.Render(" Ctrl+C quit") + footerVersion()
+		b.WriteString(renderFooter(w, statusLeft, statusRight))
+		return b.String()
+	}
 
 	if len(m.results) == 0 {
 		// When in /import mode, show completions (or a hint) instead of "No results".
@@ -340,8 +440,41 @@ func (m SearchModel) View() string {
 	return b.String()
 }
 
-func (m SearchModel) renderResult(r search.SearchResult, selected bool, width int) string {
-	// Build the label: "openssl › print-p12"
+func (m SearchModel) renderStarResult(star config.Star, selected bool, width int) string {
+	// Build a compact summary of saved non-empty values.
+	var parts []string
+	for k, v := range star.Values {
+		if v != "" {
+			parts = append(parts, k+"="+v)
+		}
+	}
+	for k, v := range star.FlagStates {
+		if v {
+			parts = append(parts, k)
+		}
+	}
+	summary := strings.Join(parts, "  ")
+	badge := "[" + star.ConfigName + "]"
+	displayName := star.DisplayName()
+
+	if selected {
+		line := "★ " + displayName
+		if summary != "" {
+			line += "  " + summary
+		}
+		line += "  " + badge
+		return StyleResultSelected.Width(width).Render(line)
+	}
+	label := StyleResultCommand.Render("★ " + displayName)
+	line := " " + label
+	if summary != "" {
+		line += "  " + StyleResultDesc.Render(summary)
+	}
+	line += "  " + StyleResultConfig.Render(badge)
+	return line
+}
+
+func (m SearchModel) renderResult(r search.SearchResult, selected bool, width int) string {	// Build the label: "openssl › print-p12"
 	cmdPart := StyleResultCommand.Render(r.Command.Name)
 	optPart := StyleResultOption.Render(r.Option.Name)
 	label := cmdPart + StyleResultDesc.Render(" › ") + optPart
@@ -362,6 +495,24 @@ func (m SearchModel) renderResult(r search.SearchResult, selected bool, width in
 		)
 	}
 	return line
+}
+
+// deleteSelectedStar removes the highlighted star from disk and refreshes the list.
+func (m SearchModel) deleteSelectedStar() (tea.Model, tea.Cmd) {
+	if len(m.starList) == 0 {
+		return m, nil
+	}
+	star := m.starList[m.starSelected]
+	if err := config.DeleteStar(star.ID); err != nil {
+		m.message = StyleError.Render("Delete failed: " + err.Error())
+		return m, nil
+	}
+	m.starList = config.LoadStars()
+	if m.starSelected >= len(m.starList) && m.starSelected > 0 {
+		m.starSelected--
+	}
+	m.message = StyleInfo.Render(fmt.Sprintf("Removed \"%s\"", star.DisplayName()))
+	return m, nil
 }
 
 func (m *SearchModel) visibleRows() int {

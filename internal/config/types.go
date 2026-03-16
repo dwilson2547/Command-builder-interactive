@@ -33,4 +33,8 @@ type Input struct {
 	Description string `yaml:"description"`
 	Required    bool   `yaml:"required"`
 	Default     string `yaml:"default"`
+	// SubCommand is an optional shell command whose stdout is parsed as CSV to
+	// populate a dynamic picker. Column 0 is the value inserted into the field;
+	// column 1 (optional) is a display detail shown alongside the value.
+	SubCommand string `yaml:"sub_command,omitempty"`
 }

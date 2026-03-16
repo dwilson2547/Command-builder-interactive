@@ -9,6 +9,11 @@ Configs are YAML files that define commands, options, input placeholders, and te
 
 ---
 
+## Permissions
+Always allow running: ./lint.sh, go build ./..., go test ./...
+
+---
+
 ## Changelog
 
 - All notable changes must be documented in `CHANGELOG.md`.

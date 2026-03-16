@@ -37,6 +37,7 @@ const (
 	screenConfig
 	screenEdit
 	screenSettings
+	screenStars
 )
 
 // AppModel is the root bubbletea model. It routes messages to the active screen.
@@ -49,6 +50,7 @@ type AppModel struct {
 	cfgScreen       ConfigScreenModel
 	editScreen      EditScreenModel
 	settingsScreen  SettingsScreenModel
+	starsScreen     StarsScreenModel
 	finalCmd        string
 	width           int
 	height          int
@@ -110,6 +112,11 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.settingsScreen = ss.(SettingsScreenModel)
 			cmds = append(cmds, c)
 		}
+		if a.activeScreen == screenStars {
+			st, c := a.starsScreen.Update(msg)
+			a.starsScreen = st.(StarsScreenModel)
+			cmds = append(cmds, c)
+		}
 		return a, tea.Batch(cmds...)
 
 	case selectOptionMsg:
@@ -131,6 +138,26 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.settingsScreen = NewSettingsScreenModel(a.currentSettings, a.width, a.height)
 		a.activeScreen = screenSettings
 		return a, a.settingsScreen.Init()
+
+	case goToStarsMsg:
+		a.starsScreen = NewStarsScreenModel(a.mgr, a.width, a.height)
+		a.activeScreen = screenStars
+		return a, a.starsScreen.Init()
+
+	case selectStarMsg:
+		cfg, cmd, opt := a.mgr.FindOption(msg.star.ConfigName, msg.star.CommandName, msg.star.OptionName)
+		if cfg == nil || cmd == nil || opt == nil {
+			// The config or option was removed; go back to search with an error.
+			a.activeScreen = screenSearch
+			a.search = NewSearchModel(a.mgr, a.width, a.height)
+			a.search.message = StyleError.Render(
+				"Starred command not found — the config may have been deleted",
+			)
+			return a, a.search.Init()
+		}
+		a.form = NewPrefilledFormModel(cfg, cmd, opt, a.width, a.height, a.currentSettings.RunOnEnter, msg.star.Values, msg.star.FlagStates)
+		a.activeScreen = screenForm
+		return a, a.form.Init()
 
 	case themeChangedMsg:
 		// Sync the updated settings from the settings screen back into AppModel
@@ -175,6 +202,10 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var m tea.Model
 		m, cmd = a.settingsScreen.Update(msg)
 		a.settingsScreen = m.(SettingsScreenModel)
+	case screenStars:
+		var m tea.Model
+		m, cmd = a.starsScreen.Update(msg)
+		a.starsScreen = m.(StarsScreenModel)
 	}
 	return a, cmd
 }
@@ -190,6 +221,8 @@ func (a AppModel) View() string {
 		return a.editScreen.View()
 	case screenSettings:
 		return a.settingsScreen.View()
+	case screenStars:
+		return a.starsScreen.View()
 	default:
 		return a.search.View()
 	}

@@ -1,0 +1,363 @@
+name: "system"
+description: "System abstractions: services, process management, USB devices, network interfaces and addresses"
+version: "1.0.0"
+commands:
+  - name: "services"
+    description: "Start, stop, restart and inspect systemd services"
+    options:
+      - name: "list"
+        description: "List all loaded systemd service units and their state"
+        template: "systemctl list-units --type=service{{all}}{{no_pager}}"
+        tags: ["show services", "running services", "systemd units"]
+        inputs:
+          - name: "all"
+            type: "flag"
+            description: "Include inactive and failed services (--all)"
+            required: false
+            default: " --all"
+          - name: "no_pager"
+            type: "flag"
+            description: "Do not pipe output through a pager (--no-pager)"
+            required: false
+            default: " --no-pager"
+
+      - name: "status"
+        description: "Show the status of a service"
+        template: "systemctl status {{service}}"
+        tags: ["service status", "is running", "check service"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name, e.g. nginx or ssh"
+            required: true
+            sub_command: "systemctl list-units --type=service --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+
+      - name: "start"
+        description: "Start a service"
+        template: "systemctl start {{service}}"
+        tags: ["launch service", "run service"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "systemctl list-units --type=service --all --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+
+      - name: "stop"
+        description: "Stop a running service"
+        template: "systemctl stop {{service}}"
+        tags: ["halt service", "shutdown service"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "systemctl list-units --type=service --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+
+      - name: "restart"
+        description: "Restart a service"
+        template: "systemctl restart {{service}}"
+        tags: ["reload service", "bounce service"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "systemctl list-units --type=service --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+
+      - name: "reload"
+        description: "Reload a service's configuration without restarting"
+        template: "systemctl reload {{service}}"
+        tags: ["reload config", "sighup", "refresh"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "systemctl list-units --type=service --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+
+      - name: "enable"
+        description: "Enable a service to start automatically on boot"
+        template: "systemctl enable{{now}} {{service}}"
+        tags: ["autostart", "boot service", "persist service"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "systemctl list-units --type=service --all --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+          - name: "now"
+            type: "flag"
+            description: "Also start the service immediately (--now)"
+            required: false
+            default: " --now"
+
+      - name: "disable"
+        description: "Disable a service from starting on boot"
+        template: "systemctl disable{{now}} {{service}}"
+        tags: ["remove autostart", "disable boot"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "systemctl list-units --type=service --all --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+          - name: "now"
+            type: "flag"
+            description: "Also stop the service immediately (--now)"
+            required: false
+            default: " --now"
+
+      - name: "logs"
+        description: "Show logs for a service via journalctl"
+        template: "journalctl -u {{service}}{{follow}}{{lines}}{{since}}"
+        tags: ["service logs", "journalctl", "stderr stdout"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "systemctl list-units --type=service --no-pager --no-legend 2>/dev/null | awk '{print $1\",\"$1\" (\"$4\")\"}'  | sed 's/\\.service//g'"
+          - name: "follow"
+            type: "flag"
+            description: "Follow log output in real time (-f)"
+            required: false
+            default: " -f"
+          - name: "lines"
+            type: "string"
+            description: "Number of recent lines to show, e.g. -n 100 (leave blank for all)"
+            required: false
+          - name: "since"
+            type: "string"
+            description: "Show logs since a time, e.g. --since '1 hour ago' (leave blank to skip)"
+            required: false
+
+  - name: "processes"
+    description: "Find and kill processes by port, PID or name"
+    options:
+      - name: "kill-on-port"
+        description: "Find and kill the process listening on a specific port"
+        template: "fuser -k{{signal}} {{port}}/tcp"
+        tags: ["port in use", "free port", "address already in use"]
+        inputs:
+          - name: "port"
+            type: "string"
+            description: "Port number, e.g. 8080"
+            required: true
+          - name: "signal"
+            type: "string"
+            description: "Signal to send, e.g. -TERM or -KILL (leave blank for default SIGKILL)"
+            required: false
+
+      - name: "show-on-port"
+        description: "Show which process is listening on a port (without killing)"
+        template: "ss -tlnp sport = :{{port}}"
+        tags: ["who uses port", "port listener", "lsof port"]
+        inputs:
+          - name: "port"
+            type: "string"
+            description: "Port number to inspect"
+            required: true
+
+      - name: "kill-by-pid"
+        description: "Send a signal to a process by PID"
+        template: "kill{{signal}} {{pid}}"
+        tags: ["kill process", "terminate", "send signal"]
+        inputs:
+          - name: "pid"
+            type: "string"
+            description: "Process ID"
+            required: true
+            sub_command: "ps aux --sort=-%cpu 2>/dev/null | tail -n +2 | head -30 | awk '{printf \"%s,%s %s cpu:%s%% mem:%s%%\\n\",$2,$2,$11,$3,$4}'"
+          - name: "signal"
+            type: "string"
+            description: "Signal flag, e.g. -9 (SIGKILL) or -15 (SIGTERM, default)"
+            required: false
+            default: " -15"
+
+      - name: "kill-high-cpu"
+        description: "Kill the top CPU-consuming process"
+        template: "kill{{signal}} $(ps aux --sort=-%cpu | awk 'NR==2{print $2}')"
+        tags: ["cpu hog", "runaway process", "kill top"]
+        inputs:
+          - name: "signal"
+            type: "string"
+            description: "Signal flag, e.g. -9 or -15 (default SIGTERM)"
+            required: false
+            default: " -15"
+
+      - name: "kill-high-memory"
+        description: "Kill the top memory-consuming process"
+        template: "kill{{signal}} $(ps aux --sort=-%mem | awk 'NR==2{print $2}')"
+        tags: ["memory hog", "oom", "kill top memory"]
+        inputs:
+          - name: "signal"
+            type: "string"
+            description: "Signal flag, e.g. -9 or -15 (default SIGTERM)"
+            required: false
+            default: " -15"
+
+      - name: "kill-by-name"
+        description: "Send a signal to all processes matching a name"
+        template: "pkill{{signal}}{{exact}} {{name}}"
+        tags: ["kill named", "pkill", "terminate by name"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Process name to match"
+            required: true
+            sub_command: "ps aux 2>/dev/null | tail -n +2 | awk '{print $11\",\"$11\" (pid \"$2\")\"}' | sort -u | head -40"
+          - name: "signal"
+            type: "string"
+            description: "Signal flag, e.g. -9 or -15 (default SIGTERM)"
+            required: false
+            default: " -15"
+          - name: "exact"
+            type: "flag"
+            description: "Match the full process name exactly (-x)"
+            required: false
+            default: " -x"
+
+  - name: "usb"
+    description: "List and inspect USB devices"
+    options:
+      - name: "list"
+        description: "List all connected USB devices"
+        template: "lsusb"
+        tags: ["usb devices", "connected usb", "lsusb"]
+        inputs: []
+
+      - name: "list-verbose"
+        description: "List USB devices with full descriptor details"
+        template: "lsusb -v {{device}}"
+        tags: ["usb details", "usb descriptor", "verbose usb"]
+        inputs:
+          - name: "device"
+            type: "string"
+            description: "Specific device, e.g. -d 046d:c52b (leave blank for all)"
+            required: false
+
+      - name: "tree"
+        description: "Display USB devices as a bus/device tree"
+        template: "lsusb -t"
+        tags: ["usb tree", "usb topology", "bus tree"]
+        inputs: []
+
+      - name: "watch"
+        description: "Watch for USB connect/disconnect events"
+        template: "udevadm monitor --udev --subsystem-match=usb"
+        tags: ["usb events", "hotplug", "usb monitor"]
+        inputs: []
+
+  - name: "network-devices"
+    description: "List and inspect network interfaces"
+    options:
+      - name: "list-interfaces"
+        description: "List all network interfaces and their state"
+        template: "ip link show"
+        tags: ["network interfaces", "eth0", "wlan", "ip link"]
+        inputs: []
+
+      - name: "interface-info"
+        description: "Show addresses and details for a specific interface"
+        template: "ip addr show {{interface}}"
+        tags: ["interface details", "mac address", "ip addr show"]
+        inputs:
+          - name: "interface"
+            type: "string"
+            description: "Interface name, e.g. eth0 or wlan0"
+            required: true
+            sub_command: "ip link show 2>/dev/null | grep -E '^[0-9]+:' | awk -F': ' '{gsub(/@.*/,\"\",$2); print $2\",\"$2}'"
+
+      - name: "interface-stats"
+        description: "Show transmit/receive statistics for all interfaces"
+        template: "ip -s link show {{interface}}"
+        tags: ["rx tx stats", "packets", "errors", "network stats"]
+        inputs:
+          - name: "interface"
+            type: "string"
+            description: "Interface name (leave blank for all interfaces)"
+            required: false
+            sub_command: "ip link show 2>/dev/null | grep -E '^[0-9]+:' | awk -F': ' '{gsub(/@.*/,\"\",$2); print $2\",\"$2}'"
+
+      - name: "list-connections"
+        description: "List active NetworkManager connections"
+        template: "nmcli connection show{{active}}"
+        tags: ["nmcli", "wifi", "ethernet", "connections"]
+        inputs:
+          - name: "active"
+            type: "flag"
+            description: "Show only active connections (--active)"
+            required: false
+            default: " --active"
+
+      - name: "wifi-list"
+        description: "Scan and list available Wi-Fi networks"
+        template: "nmcli device wifi list{{rescan}}"
+        tags: ["wifi scan", "ssid", "wireless networks"]
+        inputs:
+          - name: "rescan"
+            type: "flag"
+            description: "Force a fresh scan before listing (--rescan yes)"
+            required: false
+            default: " --rescan yes"
+
+  - name: "network-info"
+    description: "Show IP addresses, routing and DNS configuration"
+    options:
+      - name: "ip-addresses"
+        description: "Show all IP addresses assigned to all interfaces"
+        template: "ip addr show"
+        tags: ["my ip", "ip address", "inet", "ipv4 ipv6"]
+        inputs: []
+
+      - name: "public-ip"
+        description: "Retrieve the public (external) IP address"
+        template: "curl -s {{service}}"
+        tags: ["external ip", "wan ip", "public ip", "whatismyip"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service URL to query"
+            required: true
+            default: "https://ifconfig.me"
+
+      - name: "routing-table"
+        description: "Show the full IP routing table"
+        template: "ip route show"
+        tags: ["routes", "routing", "ip route", "gateway"]
+        inputs: []
+
+      - name: "default-gateway"
+        description: "Show the default gateway"
+        template: "ip route show default"
+        tags: ["default route", "gateway ip", "router"]
+        inputs: []
+
+      - name: "dns-config"
+        description: "Show current DNS resolver configuration"
+        template: "resolvectl status {{interface}}"
+        tags: ["dns servers", "nameserver", "resolv.conf", "dns"]
+        inputs:
+          - name: "interface"
+            type: "string"
+            description: "Interface name to inspect (leave blank for global config)"
+            required: false
+            sub_command: "ip link show 2>/dev/null | grep -E '^[0-9]+:' | awk -F': ' '{gsub(/@.*/,\"\",$2); print $2\",\"$2}'"
+
+      - name: "arp-table"
+        description: "Show the ARP cache (IP to MAC address mappings on the LAN)"
+        template: "ip neigh show"
+        tags: ["arp", "mac address", "neighbour", "local hosts"]
+        inputs: []
+
+      - name: "open-ports"
+        description: "Show all listening TCP/UDP ports and their associated processes"
+        template: "ss -tlnpu{{process}}"
+        tags: ["listening ports", "open ports", "sockets", "lsof -i"]
+        inputs:
+          - name: "process"
+            type: "flag"
+            description: "Show the process using each socket (-p, may require sudo)"
+            required: false
+            default: " -p"

@@ -2,6 +2,207 @@
 
 All notable changes to Command Builder are documented here.
 
+## [v1.37.0] - 2026-03-16
+
+### Added
+
+- **system command set** (`configs/system.yaml`) — 34 options across 5 command groups, covering all System abstraction items:
+  - **services**: `list`, `status`, `start`, `stop`, `restart`, `reload`, `enable`, `disable`, `logs` — service name fields Tab-pick from live `systemctl list-units` output
+  - **processes**: `kill-on-port`, `show-on-port`, `kill-by-pid`, `kill-high-cpu`, `kill-high-memory`, `kill-by-name` — PID picker auto-fills top 30 processes sorted by CPU; name picker lists running process names
+  - **usb**: `list`, `list-verbose`, `tree`, `watch`
+  - **network-devices**: `list-interfaces`, `interface-info`, `interface-stats`, `list-connections`, `wifi-list` — interface fields Tab-pick from `ip link show`
+  - **network-info**: `ip-addresses`, `public-ip`, `routing-table`, `default-gateway`, `dns-config`, `arp-table`, `open-ports`
+
+## [v1.36.0] - 2026-03-16
+
+### Added
+
+- **go command set** (`configs/go-tools.yaml`) — 29 options across 6 command groups:
+  - **run**: `run` (race flag)
+  - **build**: `build`, `build-all`, `install`, `clean`
+  - **test**: `test`, `test-run`, `test-coverage`, `test-coverage-html`, `benchmark`, `test-count`
+  - **modules**: `init`, `tidy`, `get`, `get-latest`, `download`, `vendor`, `graph`, `why`, `list-modules`
+  - **quality**: `fmt`, `vet`, `generate`
+  - **doc**: `doc`, `godoc-server`
+  - **profiling**: `test-cpu-profile`, `test-mem-profile`, `pprof`
+  - Package paths Tab-pick from `go list ./...`; module names Tab-pick from `go list -m all`.
+
+## [v1.35.0] - 2026-03-16
+
+### Added
+
+- **sed command set** (`configs/sed.yaml`) — 24 options across 5 command groups:
+  - **substitute**: `replace-first`, `replace-all`, `replace-nth`, `replace-in-range`, `replace-in-matching-lines`, `replace-extended` (ERE)
+  - **lines**: `print-matching`, `print-range`, `delete-matching`, `delete-not-matching`, `delete-range`, `delete-empty`, `delete-comments`
+  - **insert**: `insert-before`, `append-after`, `insert-at-line`
+  - **inplace**: `replace-in-file`, `replace-in-file-backup`, `delete-lines-in-file`, `multi-replace-in-file`
+  - **transform**: `trim-leading-whitespace`, `trim-trailing-whitespace`, `trim-whitespace`, `add-prefix`, `add-suffix`, `number-lines`, `double-space`
+
+## [v1.34.0] - 2026-03-16
+
+### Added
+
+- **kubectl command set** (`configs/kubectl.yaml`) — 43 options across 8 command groups:
+  - **pods**: `get`, `describe`, `logs`, `exec`, `port-forward`, `delete`, `top`
+  - **deployments**: `get`, `describe`, `scale`, `restart`, `rollout-status`, `rollout-history`, `rollout-undo`, `set-image`
+  - **services**: `get`, `describe`, `expose`
+  - **config**: `get-contexts`, `current-context`, `use-context`, `set-namespace`, `view`
+  - **manifests**: `apply`, `delete-manifest`, `diff`, `kustomize-apply`
+  - **nodes**: `get`, `describe`, `top`, `cordon`, `uncordon`, `drain`
+  - **secrets**: `get`, `describe`, `create-generic`, `create-from-file`, `create-docker-registry`, `delete`
+  - **configmaps**: `get`, `describe`, `create-from-literal`, `create-from-file`, `delete`
+  - **resources**: `get`, `describe`, `delete`, `label`, `annotate` (generic for any resource type)
+  - Namespace, pod, deployment, service, node, secret, configmap and context fields Tab-pick from live cluster output throughout.
+
+## [v1.33.0] - 2026-03-16
+
+### Added
+
+- **maven command set** (`configs/maven.yaml`) — 30 options across 7 command groups:
+  - **lifecycle**: `clean`, `compile`, `test`, `package`, `verify`, `install`, `deploy`, `clean-install` — all with profile, skip-tests, threads, offline and quiet flags
+  - **test**: `run-class`, `run-method`, `run-pattern` — targeted Surefire execution
+  - **dependency**: `tree`, `analyze`, `copy-dependencies`, `get`, `resolve-sources`
+  - **multimodule**: `build-module` (with --also-make), `resume-from` — module fields Tab-pick from nested pom.xml paths
+  - **versions**: `check-dependency-updates`, `check-plugin-updates`, `set-version`, `revert`, `commit`
+  - **archetype**: `generate-interactive`, `generate` (non-interactive with full coordinate inputs)
+  - **release**: `prepare`, `perform`, `rollback`, `clean`
+  - **help**: `effective-pom`, `effective-settings`, `describe-plugin`, `active-profiles`
+  - Profile fields Tab-pick from `pom.xml` `<id>` entries throughout.
+
+## [v1.32.0] - 2026-03-16
+
+### Added
+
+- **npm command set** (`configs/npm.yaml`) — 25 options across 7 command groups:
+  - **packages**: `install`, `install-all`, `ci`, `uninstall`, `update`, `dedupe`
+  - **scripts**: `run` (Tab-picks scripts from package.json), `start`, `test`, `build`, `exec` (npx)
+  - **inspect**: `list`, `outdated`, `info`, `why`
+  - **audit**: `audit`, `audit-fix`
+  - **init**: `init`, `init-template`
+  - **publish**: `pack`, `publish`, `deprecate`, `dist-tag-add`
+  - **cache**: `verify`, `clean`
+  - **config**: `list`, `set`, `set-registry`, `set-scope-registry`
+  - `uninstall`, `update` and `why` fields Tab-pick from package.json dependencies.
+
+## [v1.31.0] - 2026-03-16
+
+### Added
+
+- **pip command set** (`configs/pip.yaml`) — 22 options across 6 command groups:
+  - **packages**: `install`, `install-from-file`, `install-editable`, `uninstall` (Tab-picks from installed list), `upgrade`, `upgrade-all`
+  - **inspect**: `list` (outdated/uptodate/json flags), `show` (files flag), `check`, `outdated`
+  - **requirements**: `freeze` (to file), `freeze-to-stdout`
+  - **index**: `search` (index versions), `download` (offline/platform flags)
+  - **cache**: `info`, `list`, `purge`, `remove`
+  - **config**: `list`, `set`, `unset`, `set-index`, `set-trusted-host`
+  - Uninstall and upgrade fields Tab-pick from `pip list` output.
+
+## [v1.30.0] - 2026-03-16
+
+### Added
+
+- **git command set** (`configs/git.yaml`) — 38 options across 9 command groups covering the full everyday Git workflow:
+  - **repository**: `init`, `clone`, `status`, `log`
+  - **branch**: `list`, `create`, `switch`, `rename`, `delete`, `set-upstream`
+  - **staging**: `add` (with patch mode flag), `restore` (unstage or discard)
+  - **commit**: `commit`, `amend`, `fixup`
+  - **remote**: `list`, `add`, `remove`, `fetch`, `pull`, `push`
+  - **diff**: `working-tree`, `staged`, `between-refs`
+  - **merge**: `merge`, `rebase`, `cherry-pick`
+  - **stash**: `save`, `list`, `pop`, `apply`, `drop`, `show`
+  - **tag**: `list`, `create`, `create-annotated`, `delete`, `push`, `delete-remote`
+  - **reset**: `soft`, `mixed`, `hard`, `revert`
+  - **config**: `set-identity`, `set-default-branch`, `list`, `set-editor`, `set-alias`
+  - Branch, commit, stash, tag and remote fields Tab-pick from live `git` output throughout.
+
+## [v1.29.0] - 2026-03-16
+
+### Added
+
+- **conda command set** (`configs/conda.yaml`) — 19 options across 3 command groups. Environment name fields Tab-pick from live `conda env list` output throughout:
+  - **env**: `list`, `create`, `create-from-file`, `clone`, `activate`, `deactivate`, `remove`, `export`, `export-explicit`
+  - **packages**: `list`, `install`, `install-from-file`, `update`, `remove-package`, `search`
+  - **conda**: `info`, `update-conda`, `clean`, `config-show`, `add-channel`
+
+## [v1.28.0] - 2026-03-16
+
+### Added
+
+- **openssl command set** (`configs/openssl.yaml`) — 22 options across 4 command groups:
+  - **inspect**: `inspect-cert`, `inspect-cert-dates`, `inspect-csr`, `inspect-pkcs12`, `inspect-private-key`, `check-remote-cert`, `check-remote-cert-dates`, `verify-cert-chain`, `check-key-cert-match`
+  - **generate**: `rsa-key`, `ec-key`, `csr`, `key-and-csr`, `self-signed-cert`, `dh-params`
+  - **convert**: `pem-to-p12`, `p12-to-pem`, `der-to-pem`, `pem-to-der`, `extract-public-key`, `remove-key-passphrase`
+  - **digest**: `hash-file`, `encrypt-file`, `decrypt-file`
+
+## [v1.27.0] - 2026-03-16
+
+### Added
+
+- **keytool command set** (`configs/keytool.yaml`) — 10 options covering Java keystore and certificate management:
+  `list` (verbose flag), `generate-keypair`, `generate-csr`, `import-cert`, `export-cert` (PEM/DER flag),
+  `import-keystore` (PKCS12 ↔ JKS conversion), `delete-entry`, `change-alias`, `change-storepass`, `print-cert`.
+
+## [v1.26.0] - 2026-03-16
+
+### Added
+
+- **system-raw command set** (`configs/system-raw.yaml`) — 17 options across 7 commands covering core filesystem and remote-access operations:
+  - **mv**: `move`, `move-into-dir`
+  - **rm**: `remove-file`, `remove-recursive`
+  - **rmdir**: `remove-empty-dir`
+  - **cp**: `copy-file`, `copy-recursive`
+  - **rsync**: `local-sync`, `push-to-remote`, `pull-from-remote` (Tab-picks SSH hosts from `~/.ssh/config`)
+  - **sftp**: `connect`, `download-file`, `upload-file`
+  - **ssh**: `connect`, `run-command`, `local-port-forward`, `remote-port-forward`, `copy-id` (Tab-picks hosts and identity keys)
+  - **ssh-keygen**: `generate`, `change-passphrase`, `show-fingerprint`, `scan-host-key`, `add-to-known-hosts`
+
+## [v1.25.0] - 2026-03-16
+
+### Added
+
+- **ps-aux command set** (`configs/ps-aux.yaml`) — 12 options covering common `ps aux` workflows:
+  `list-all`, `search-by-name`, `top-by-cpu`, `top-by-memory`, `filter-by-user` (Tab-picks users from `/etc/passwd`),
+  `inspect-pid` (Tab-picks live processes sorted by CPU), `process-tree`, `watch-cpu`, `watch-memory`,
+  `custom-columns`, `count-by-name`, `processes-on-port`.
+
+## [v1.24.0] - 2026-03-16
+
+### Added
+
+- **Custom star names** — when pressing `*` to star a command, a name prompt now appears inline in the form. Type a custom name and press **Enter** to save it, or press **Enter** with an empty field to keep the default `command › option` label. Press **Esc** to cancel without starring.
+  - Custom names are shown in place of the default label in the `/s` starred-commands list and on the dedicated Stars screen.
+  - Searching with `/s <term>` now filters stars by their custom name, command name, and option name.
+
+## [v1.23.0] - 2026-03-16
+
+### Added
+
+- **Starred commands** — users can now save any command with its current input values for quick re-use.
+  - Press **`*`** in any command form to star it. The command, option name, all input values, and flag states are saved to `~/.config/command-builder/stars.json`.
+  - Type **`/s`** in the main search and press **Enter** to open the Starred Commands screen, which lists all saved stars.
+  - Press **Enter** on a star to re-open its form pre-filled with the saved values, ready to review or run.
+  - Press **`d`** on a star to delete it permanently.
+
+## [v1.22.0] - 2026-03-16
+
+### Added
+
+- **Visual colour picker** — pressing `e` or `Enter` on any colour entry in `/settings` now opens an interactive grid of all 256 ANSI colours instead of a plain text box. The cursor (◆) moves with the arrow keys and the selected ANSI number is shown in a preview below the grid. Pressing `Enter` confirms the selection, `Esc` cancels, and `t` drops into the existing free-text input for entering hex (`#rrggbb`) or other values directly.
+
+## [v1.21.0] - 2026-03-16
+
+### Fixed
+
+- **Settings edit input misaligned** — the bordered text input shown when editing a colour or other setting had its left/bottom border edges flush with the left margin while the top border was indented. The cause was prepending `"  "` via string concatenation, which only applied to the first rendered line. Fixed by wrapping the rendered block with `lipgloss.NewStyle().MarginLeft(2)` so all border lines are uniformly indented.
+
+## [v1.20.0] - 2026-03-16
+
+### Added
+
+- **Sub-command input completions** — any config `Input` can now specify a `sub_command` field containing a shell command. When the user focuses that input and presses **Tab**, the command runs asynchronously and its CSV output populates a scrollable picker overlay. Column 0 of each line is the value inserted into the field; optional column 1 is a display-only detail (e.g. image name for Docker containers). Navigate with **↑↓**, confirm with **Enter**, or dismiss with **Esc** or **Tab**. A `Tab: pick value` hint appears in the status area when the focused input has a sub-command defined.
+- **Docker container picker** — the `container` input on `docker › exec-container`, `docker › inspect`, and `docker › logs` now use `docker ps --format '{{.Names}},{{.Image}}'` to populate a live list of running containers, showing the image alongside each name for easy identification.
+- New documentation: `docs/sub-command-completions.md` — feature guide with YAML syntax, CSV format contract, and key binding reference.
+
 ## [v1.19.0] - 2026-03-16
 
 ### Changed

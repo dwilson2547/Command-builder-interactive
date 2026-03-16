@@ -3,15 +3,30 @@ package tui
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dwilson2547/command-builder/internal/config"
 )
+
+// SubCmdItem represents a single entry returned by a sub-command picker.
+type SubCmdItem struct {
+	Value  string // inserted into the input when selected
+	Detail string // display-only detail (may be empty)
+}
+
+// subCmdResultMsg carries the result of an async sub-command execution.
+type subCmdResultMsg struct {
+	items    []SubCmdItem
+	err      error
+	inputIdx int // index of the input that triggered the run
+}
 
 // FormModel is the command-builder form screen.
 type FormModel struct {
@@ -29,10 +44,22 @@ type FormModel struct {
 	compIdx        int
 	showCompletion bool
 
-	builtCmd    string
-	runOnEnter  bool
-	width       int
-	height      int
+	// subCmd picker state.
+	subCmdItems   []SubCmdItem
+	subCmdIdx     int
+	showSubCmd    bool
+	loadingSubCmd bool
+	subCmdErr     string
+
+	// star naming state — active while the user is entering a custom name.
+	starNaming    bool
+	starNameInput textinput.Model
+
+	builtCmd   string
+	formMsg    string // transient status message (e.g. star confirmation)
+	runOnEnter bool
+	width      int
+	height     int
 }
 
 // NewFormModel creates a new form for the given option.
@@ -54,15 +81,40 @@ func NewFormModel(cfg *config.Config, cmd *config.Command, opt *config.Option, w
 	}
 
 	flagStates := make([]bool, len(opt.Inputs))
+
+	nameInput := textinput.New()
+	nameInput.Width = max(30, w-20)
+	nameInput.Placeholder = cmd.Name + " › " + opt.Name
+
 	m := FormModel{
-		cfg:        cfg,
-		cmd:        cmd,
-		opt:        opt,
-		inputs:     inputs,
-		flagStates: flagStates,
-		runOnEnter: runOnEnter,
-		width:      w,
-		height:     h,
+		cfg:           cfg,
+		cmd:           cmd,
+		opt:           opt,
+		inputs:        inputs,
+		flagStates:    flagStates,
+		starNameInput: nameInput,
+		runOnEnter:    runOnEnter,
+		width:         w,
+		height:        h,
+	}
+	m.rebuildCommand()
+	return m
+}
+
+// NewPrefilledFormModel creates a form pre-filled with the saved values from a
+// starred command, so the user can review or tweak inputs before running.
+func NewPrefilledFormModel(cfg *config.Config, cmd *config.Command, opt *config.Option, w, h int, runOnEnter bool, values map[string]string, flagStates map[string]bool) FormModel {
+	m := NewFormModel(cfg, cmd, opt, w, h, runOnEnter)
+	for i, inp := range opt.Inputs {
+		if inp.Type == "flag" {
+			if on, ok := flagStates[inp.Name]; ok {
+				m.flagStates[i] = on
+			}
+		} else {
+			if val, ok := values[inp.Name]; ok && val != "" {
+				m.inputs[i].SetValue(val)
+			}
+		}
 	}
 	m.rebuildCommand()
 	return m
@@ -80,6 +132,23 @@ func (m FormModel) Init() tea.Cmd {
 func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
+	case subCmdResultMsg:
+		m.loadingSubCmd = false
+		if msg.inputIdx != m.focus {
+			// User moved away while command was running; discard.
+			return m, nil
+		}
+		if msg.err != nil {
+			m.subCmdErr = msg.err.Error()
+			m.subCmdItems = nil
+		} else {
+			m.subCmdErr = ""
+			m.subCmdItems = msg.items
+		}
+		m.subCmdIdx = 0
+		m.showSubCmd = true
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -87,15 +156,41 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for i := range m.inputs {
 			m.inputs[i].Width = inputW
 		}
+		m.starNameInput.Width = inputW
 		return m, nil
 
 	case tea.KeyMsg:
+		// ── Star naming mode: capture the custom name before saving. ─────────
+		if m.starNaming {
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEsc:
+				m.starNaming = false
+				m.starNameInput.SetValue("")
+				return m, nil
+			case tea.KeyEnter:
+				name := strings.TrimSpace(m.starNameInput.Value())
+				m.starNaming = false
+				m.starNameInput.SetValue("")
+				return m.starCurrentCommand(name)
+			default:
+				var cmd tea.Cmd
+				m.starNameInput, cmd = m.starNameInput.Update(msg)
+				return m, cmd
+			}
+		}
+
 		switch msg.Type {
 
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 
 		case tea.KeyEsc:
+			if m.showSubCmd {
+				m.showSubCmd = false
+				return m, nil
+			}
 			return m, func() tea.Msg { return backToSearchMsg{} }
 
 		case tea.KeySpace:
@@ -107,6 +202,13 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyEnter:
+			if m.showSubCmd && len(m.subCmdItems) > 0 {
+				item := m.subCmdItems[m.subCmdIdx]
+				m.inputs[m.focus].SetValue(item.Value)
+				m.showSubCmd = false
+				m.rebuildCommand()
+				return m, nil
+			}
 			if m.builtCmd != "" && m.allRequiredFilled() {
 				cmd := m.builtCmd
 				return m, func() tea.Msg { return commandConfirmedMsg{command: cmd} }
@@ -116,6 +218,12 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyTab:
+			if m.showSubCmd {
+				// Close the picker and move to the next field.
+				m.showSubCmd = false
+				m = m.moveFocus(1)
+				return m, nil
+			}
 			if m.showCompletion {
 				// Cycle through completions.
 				if len(m.completions) > 0 {
@@ -125,9 +233,19 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			// If current field is file/dir, compute completions.
+			// If current field has a sub_command, trigger the picker.
 			if m.focus < len(m.opt.Inputs) {
 				inp := m.opt.Inputs[m.focus]
+				if inp.SubCommand != "" && !m.loadingSubCmd {
+					m.loadingSubCmd = true
+					m.showCompletion = false
+					idx := m.focus
+					subCmd := inp.SubCommand
+					return m, func() tea.Msg {
+						return runSubCommand(subCmd, idx)
+					}
+				}
+				// If current field is file/dir, compute completions.
 				if inp.Type == "file" || inp.Type == "dir" {
 					prefix := m.inputs[m.focus].Value()
 					comps := getPathCompletions(prefix, inp.Type == "dir")
@@ -159,6 +277,12 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyUp:
+			if m.showSubCmd {
+				if m.subCmdIdx > 0 {
+					m.subCmdIdx--
+				}
+				return m, nil
+			}
 			if m.showCompletion {
 				if m.compIdx > 0 {
 					m.compIdx--
@@ -171,6 +295,12 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyDown:
+			if m.showSubCmd {
+				if m.subCmdIdx < len(m.subCmdItems)-1 {
+					m.subCmdIdx++
+				}
+				return m, nil
+			}
 			if m.showCompletion {
 				if m.compIdx < len(m.completions)-1 {
 					m.compIdx++
@@ -183,8 +313,15 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		default:
-			// Any other key hides completions.
+			// Enter star naming mode — prompt for a custom name.
+			if msg.Type == tea.KeyRunes && string(msg.Runes) == "*" {
+				m.starNaming = true
+				m.starNameInput.SetValue("")
+				m.starNameInput.Placeholder = m.cmd.Name + " › " + m.opt.Name
+				return m, m.starNameInput.Focus()
+			}
 			m.showCompletion = false
+			m.showSubCmd = false
 		}
 	}
 
@@ -284,17 +421,33 @@ func (m FormModel) View() string {
 		b.WriteString("  " + label + desc + "\n")
 		b.WriteString(inputView + "\n")
 
-		// Show completions below focused file/dir field.
-		if i == m.focus && m.showCompletion && len(m.completions) > 0 {
-			b.WriteString(m.renderCompletions(w) + "\n")
+		// Show completions, loading indicator, or sub-command picker below focused field.
+		if i == m.focus {
+			if m.loadingSubCmd {
+				b.WriteString(StyleSubCmdBox.Width(w-6).Render(
+					StyleSubCmdLoading.Render("Loading…"),
+				) + "\n")
+			} else if m.showSubCmd {
+				b.WriteString(m.renderSubCmdPicker(w) + "\n")
+			} else if m.showCompletion && len(m.completions) > 0 {
+				b.WriteString(m.renderCompletions(w) + "\n")
+			}
 		}
 		b.WriteString("\n")
 	}
 
-	// ── Tab hint for file/dir fields ──────────────────────────────────────
+	// ── Hint for focused field ────────────────────────────────────────────
 	if m.focus < len(m.opt.Inputs) {
 		inp := m.opt.Inputs[m.focus]
-		if inp.Type == "file" || inp.Type == "dir" {
+		if inp.SubCommand != "" {
+			if m.showSubCmd {
+				hint := StyleResultDesc.Render("  ↑↓: navigate  Enter: select  Esc: close")
+				b.WriteString(hint + "\n")
+			} else if !m.loadingSubCmd {
+				hint := StyleResultDesc.Render("  Tab: pick value")
+				b.WriteString(hint + "\n")
+			}
+		} else if inp.Type == "file" || inp.Type == "dir" {
 			hint := StyleResultDesc.Render("  Tab: path completion")
 			b.WriteString(hint + "\n")
 		}
@@ -309,6 +462,16 @@ func (m FormModel) View() string {
 		b.WriteString(preview + "\n")
 	}
 
+	if m.starNaming {
+		prompt := StyleInputLabel.Render("  Name this star") +
+			StyleResultDesc.Render("  (leave blank to keep default, Esc to cancel)")
+		nameView := StyleInputFocused.Width(w - 6).Render(m.starNameInput.View())
+		b.WriteString("\n" + prompt + "\n")
+		b.WriteString(nameView + "\n")
+	} else if m.formMsg != "" {
+		b.WriteString("\n  " + m.formMsg + "\n")
+	}
+
 	// ── Status bar ────────────────────────────────────────────────────────
 	// Fill remaining height.
 	used := strings.Count(b.String(), "\n") + 2
@@ -317,12 +480,16 @@ func (m FormModel) View() string {
 	}
 
 	var statusMsg string
-	if m.allRequiredFilled() && m.builtCmd != "" {
+	if m.starNaming {
+		statusMsg = StyleStatusKey.Render(" Enter") + StyleStatus.Render(" confirm name") +
+			StyleStatusKey.Render("  Esc") + StyleStatus.Render(" cancel")
+	} else if m.allRequiredFilled() && m.builtCmd != "" {
 		enterLabel := "copy command & quit"
 		if m.runOnEnter {
 			enterLabel = "run command & quit"
 		}
 		statusMsg = StyleStatusKey.Render(" Enter") + StyleStatus.Render(" "+enterLabel) +
+			StyleStatusKey.Render("  *") + StyleStatus.Render(" star") +
 			StyleStatusKey.Render("  Esc") + StyleStatus.Render(" back")
 	} else {
 		missing := m.missingRequired()
@@ -356,6 +523,128 @@ func (m FormModel) renderCompletions(width int) string {
 	}
 	content := strings.Join(rows, "\n")
 	return StyleCompletionBox.Width(width - 6).Render(content)
+}
+
+func (m FormModel) renderSubCmdPicker(width int) string {
+	const maxVisible = 8
+
+	if m.subCmdErr != "" {
+		return StyleSubCmdBox.Width(width - 6).Render(
+			StyleSubCmdLoading.Render("Error: " + m.subCmdErr),
+		)
+	}
+	if len(m.subCmdItems) == 0 {
+		return StyleSubCmdBox.Width(width - 6).Render(
+			StyleSubCmdLoading.Render("No results"),
+		)
+	}
+
+	// Compute scroll window around the selected index.
+	start := 0
+	if m.subCmdIdx >= maxVisible {
+		start = m.subCmdIdx - maxVisible + 1
+	}
+	end := start + maxVisible
+	if end > len(m.subCmdItems) {
+		end = len(m.subCmdItems)
+	}
+	visible := m.subCmdItems[start:end]
+
+	// Find the longest value in the visible window for alignment.
+	maxVal := 0
+	for _, item := range visible {
+		if len(item.Value) > maxVal {
+			maxVal = len(item.Value)
+		}
+	}
+
+	innerWidth := max(20, width-10)
+
+	var rows []string
+	for i, item := range visible {
+		absIdx := start + i
+		selected := absIdx == m.subCmdIdx
+
+		var row string
+		if item.Detail != "" {
+			pad := strings.Repeat(" ", max(1, maxVal-len(item.Value)+2))
+			row = item.Value + pad + item.Detail
+		} else {
+			row = item.Value
+		}
+
+		if selected {
+			rows = append(rows, StyleSubCmdSelected.Width(innerWidth).Render(row))
+		} else {
+			rows = append(rows, StyleSubCmdItem.Width(innerWidth).Render(row))
+		}
+	}
+
+	if len(m.subCmdItems) > maxVisible {
+		rows = append(rows, StyleResultDesc.Render(
+			fmt.Sprintf("  %d / %d", m.subCmdIdx+1, len(m.subCmdItems)),
+		))
+	}
+
+	return StyleSubCmdBox.Width(width - 6).Render(strings.Join(rows, "\n"))
+}
+
+// runSubCommand executes a shell command and parses its stdout as CSV, returning
+// a subCmdResultMsg. Each line is split on the first comma: col 0 = value,
+// col 1 (optional) = detail.
+func runSubCommand(command string, inputIdx int) subCmdResultMsg {
+	out, err := exec.Command("sh", "-c", command).Output()
+	if err != nil {
+		return subCmdResultMsg{err: err, inputIdx: inputIdx}
+	}
+
+	var items []SubCmdItem
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, ",", 2)
+		item := SubCmdItem{Value: strings.TrimSpace(parts[0])}
+		if len(parts) == 2 {
+			item.Detail = strings.TrimSpace(parts[1])
+		}
+		if item.Value != "" {
+			items = append(items, item)
+		}
+	}
+	return subCmdResultMsg{items: items, inputIdx: inputIdx}
+}
+
+// starCurrentCommand saves the form's current input values as a starred command.
+// customName is shown in the stars list; leave empty to use the default label.
+func (m FormModel) starCurrentCommand(customName string) (tea.Model, tea.Cmd) {
+	values := make(map[string]string)
+	flagStates := make(map[string]bool)
+	for i, inp := range m.opt.Inputs {
+		if inp.Type == "flag" {
+			flagStates[inp.Name] = m.flagStates[i]
+		} else {
+			values[inp.Name] = m.inputs[i].Value()
+		}
+	}
+	star := config.Star{
+		ID:          fmt.Sprintf("%d", time.Now().UnixNano()),
+		ConfigName:  m.cfg.Name,
+		CommandName: m.cmd.Name,
+		OptionName:  m.opt.Name,
+		Label:       m.cmd.Name + " › " + m.opt.Name,
+		CustomName:  customName,
+		Values:      values,
+		FlagStates:  flagStates,
+		CreatedAt:   time.Now(),
+	}
+	if err := config.AddStar(star); err != nil {
+		m.formMsg = StyleError.Render("Failed to star: " + err.Error())
+	} else {
+		m.formMsg = StyleInfo.Render("★ Starred! (view with /s)")
+	}
+	return m, nil
 }
 
 func (m FormModel) allRequiredFilled() bool {
@@ -418,6 +707,8 @@ func (m FormModel) moveFocus(delta int) FormModel {
 	m.focus = (m.focus + delta + len(m.inputs)) % len(m.inputs)
 	m.inputs[m.focus].Focus()
 	m.showCompletion = false
+	m.showSubCmd = false
+	m.loadingSubCmd = false
 	return m
 }
 
