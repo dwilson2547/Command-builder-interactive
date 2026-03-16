@@ -59,6 +59,11 @@ func LoadSettings() AppSettings {
 	if err := json.Unmarshal(data, &tmp); err != nil {
 		return s
 	}
+	// Separate unmarshal for run_on_enter so we can distinguish "absent" from "false".
+	var tmpBool struct {
+		RunOnEnter *bool `json:"run_on_enter"`
+	}
+	_ = json.Unmarshal(data, &tmpBool)
 	if tmp.ColorPrimary != "" {
 		s.ColorPrimary = tmp.ColorPrimary
 	}
@@ -89,8 +94,10 @@ func LoadSettings() AppSettings {
 	if tmp.AppName != "" {
 		s.AppName = tmp.AppName
 	}
-	// bool: always copy (false is a valid user choice)
-	s.RunOnEnter = tmp.RunOnEnter
+	// bool: only copy if field was present in JSON; false is still a valid user choice.
+	if tmpBool.RunOnEnter != nil {
+		s.RunOnEnter = *tmpBool.RunOnEnter
+	}
 	return s
 }
 
