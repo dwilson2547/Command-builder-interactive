@@ -377,7 +377,7 @@ func (m SettingsScreenModel) View() string {
 	var b strings.Builder
 
 	// ── Title bar ──────────────────────────────────────────────────────────
-	title := StyleTitle.Copy().Width(w).Render(
+	title := StyleTitle.Width(w).Render(
 		"⚡ " + AppDisplayName + "  " + StyleResultDesc.Render("Settings"),
 	)
 	b.WriteString(title + "\n")
@@ -404,7 +404,7 @@ func (m SettingsScreenModel) View() string {
 				Render("  █  ")
 			colorValPart := fmt.Sprintf("%-10s", val)
 			if i == m.selected {
-				b.WriteString(StyleConfigItemSelected.Copy().Width(w).Render(
+				b.WriteString(StyleConfigItemSelected.Width(w).Render(
 					"  "+labelPart+"  "+swatch+"  "+colorValPart+"  "+e.desc,
 				) + "\n")
 			} else {
@@ -421,7 +421,7 @@ func (m SettingsScreenModel) View() string {
 				checkbox = "[✓]"
 			}
 			if i == m.selected {
-				b.WriteString(StyleConfigItemSelected.Copy().Width(w).Render(
+				b.WriteString(StyleConfigItemSelected.Width(w).Render(
 					"  "+labelPart+"  "+checkbox+"  "+e.desc,
 				) + "\n")
 			} else {
@@ -433,7 +433,7 @@ func (m SettingsScreenModel) View() string {
 			}
 		} else {
 			if i == m.selected {
-				b.WriteString(StyleConfigItemSelected.Copy().Width(w).Render(
+				b.WriteString(StyleConfigItemSelected.Width(w).Render(
 					"  "+labelPart+"  "+valPart+"  "+e.desc,
 				) + "\n")
 			} else {
@@ -465,7 +465,7 @@ func (m SettingsScreenModel) View() string {
 		b.WriteString(StyleInputLabel.Render(
 			fmt.Sprintf("  Edit \"%s\" (current: %s):", e.label, e.getVal(m.settings)),
 		) + "\n")
-		b.WriteString("  " + StyleInputFocused.Copy().Width(34).Render(m.input.View()) + "\n")
+		b.WriteString("  " + StyleInputFocused.Width(34).Render(m.input.View()) + "\n")
 		b.WriteString(StyleResultDesc.Render("  Enter to confirm · Esc to cancel") + "\n")
 	}
 

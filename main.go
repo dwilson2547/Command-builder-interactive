@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dwilson2547/command-builder/internal/config"
 	"github.com/dwilson2547/command-builder/internal/tui"
@@ -53,6 +54,9 @@ func main() {
 				}
 			} else {
 				fmt.Println(cmd)
+				if err := clipboard.WriteAll(cmd); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: could not copy to clipboard: %v\n", err)
+				}
 			}
 		}
 	}

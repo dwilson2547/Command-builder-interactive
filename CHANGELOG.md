@@ -2,6 +2,24 @@
 
 All notable changes to Command Builder are documented here.
 
+## [v1.19.0] - 2026-03-16
+
+### Changed
+
+- **README rewrite** — replaced the placeholder README with a comprehensive guide covering installation, all screens and keyboard shortcuts, config file format, sharing/import, data locations, and development workflow.
+
+
+
+### Added
+
+- **Clipboard copy on command build** — when "run on enter" is disabled, the assembled command is now automatically copied to the clipboard in addition to being printed to stdout. A warning is printed to stderr if the clipboard is unavailable.
+
+## [v1.17.0] - 2026-03-16
+
+### Fixed
+
+- **Lint cleanups** — removed deprecated lipgloss `Copy()` usage and unused UI fields/variables so `golangci-lint` passes cleanly.
+
 ## [v1.16.0] - 2026-03-15
 
 ### Fixed

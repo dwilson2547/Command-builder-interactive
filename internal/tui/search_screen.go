@@ -240,13 +240,13 @@ func (m SearchModel) View() string {
 	var b strings.Builder
 
 	// ── Title bar ──────────────────────────────────────────────────────────
-	title := StyleTitle.Copy().Width(w).Render(
+	title := StyleTitle.Width(w).Render(
 		"⚡ " + AppDisplayName,
 	)
 	b.WriteString(title + "\n")
 
 	// ── Search input ───────────────────────────────────────────────────────
-	inputBox := StyleSearchBorderFocused.Copy().Width(w - 4).Render(m.input.View())
+	inputBox := StyleSearchBorderFocused.Width(w - 4).Render(m.input.View())
 	b.WriteString(inputBox + "\n")
 
 	// ── Hint line ──────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ func (m SearchModel) View() string {
 				}
 				for i, c := range shown {
 					if i == m.completionIdx {
-						b.WriteString(StyleResultSelected.Copy().Width(w).Render("  "+c) + "\n")
+						b.WriteString(StyleResultSelected.Width(w).Render("  "+c) + "\n")
 					} else {
 						b.WriteString(StyleResultNormal.Render("  "+c) + "\n")
 					}
@@ -357,7 +357,7 @@ func (m SearchModel) renderResult(r search.SearchResult, selected bool, width in
 	}
 
 	if selected {
-		return StyleResultSelected.Copy().Width(width).Render(
+		return StyleResultSelected.Width(width).Render(
 			r.Command.Name + " › " + r.Option.Name + "  " + r.Option.Description + "  [" + r.Config.Name + "]",
 		)
 	}

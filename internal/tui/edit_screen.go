@@ -574,7 +574,7 @@ func (m EditScreenModel) View() string {
 	case editLevelInputs:
 		levelLabel = "Inputs"
 	}
-	title := StyleTitle.Copy().Width(w).Render(
+	title := StyleTitle.Width(w).Render(
 		"⚡ " + AppDisplayName + "  " +
 			StyleResultDesc.Render("Edit Config: "+m.cfg.Name+" › "+levelLabel),
 	)
@@ -708,9 +708,9 @@ func (m EditScreenModel) renderList(w, h int) string {
 				break
 			}
 			if i == idx {
-				b.WriteString(StyleConfigItemSelected.Copy().Width(w).Render(r.text) + "\n")
+				b.WriteString(StyleConfigItemSelected.Width(w).Render(r.text) + "\n")
 			} else {
-				b.WriteString(StyleConfigItem.Copy().Width(w).Render(r.text) + "\n")
+				b.WriteString(StyleConfigItem.Width(w).Render(r.text) + "\n")
 			}
 		}
 	}
@@ -728,9 +728,9 @@ func (m EditScreenModel) renderForm(w int) string {
 		b.WriteString("  " + StyleInputLabel.Render(label) + "\n")
 		var fieldView string
 		if i == m.formFocus {
-			fieldView = StyleInputFocused.Copy().Width(w - 6).Render(m.formFields[i].View())
+			fieldView = StyleInputFocused.Width(w - 6).Render(m.formFields[i].View())
 		} else {
-			fieldView = StyleInputBlurred.Copy().Width(w - 6).Render(m.formFields[i].View())
+			fieldView = StyleInputBlurred.Width(w - 6).Render(m.formFields[i].View())
 		}
 		b.WriteString(fieldView + "\n\n")
 	}

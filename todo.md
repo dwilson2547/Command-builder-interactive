@@ -14,14 +14,9 @@
 - [x] Version is now displayed in header and footer, let's keep it in the footer and remove it from the header
 - [x] add option in settings to run command on enter
 - [x] id like to add optional flags to the application, for example with tar i'd like to have the option to gzip and when enabled. if an argument is not required it should not be rendered unless provided
-- [ ] update project readme
-- [ ] when user hits enter on build command, copy it to the clipboard rather than printing it to console
+- [x] when user hits enter on build command, copy it to the clipboard as well as printing it to console assuming run on enter is disabled
+- [x] update project readme
 - [ ] expand configs with additional tools, create separate libraries that can be imported
-
-
-# Maybe
-
-- [ ] Add ascii art header to the application, name and color should be customizable in /settings menu
 
 
 # Bugs

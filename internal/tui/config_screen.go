@@ -425,7 +425,7 @@ func (m ConfigScreenModel) View() string {
 	var b strings.Builder
 
 	// ── Title ──────────────────────────────────────────────────────────────
-	title := StyleTitle.Copy().Width(w).Render(
+	title := StyleTitle.Width(w).Render(
 		"⚡ " + AppDisplayName + "  " + StyleResultDesc.Render("Config Manager"),
 	)
 	b.WriteString(title + "\n")
@@ -456,9 +456,9 @@ func (m ConfigScreenModel) View() string {
 		cmds := fmt.Sprintf("%d cmd(s)", len(cfg.Commands))
 		line := fmt.Sprintf("%-20s  %-30s  %s%s", cfg.Name, cfg.Description, cmds, badge)
 		if i == m.selected {
-			b.WriteString(StyleConfigItemSelected.Copy().Width(w).Render(line) + "\n")
+			b.WriteString(StyleConfigItemSelected.Width(w).Render(line) + "\n")
 		} else {
-			b.WriteString(StyleConfigItem.Copy().Width(w).Render(line) + "\n")
+			b.WriteString(StyleConfigItem.Width(w).Render(line) + "\n")
 		}
 	}
 
@@ -468,7 +468,7 @@ func (m ConfigScreenModel) View() string {
 	if m.action != actionList {
 		prompt := m.actionPrompt()
 		b.WriteString("\n" + StyleInputLabel.Render("  "+prompt) + "\n")
-		b.WriteString(StyleInputFocused.Copy().Width(w-6).Render(m.input.View()) + "\n")
+		b.WriteString(StyleInputFocused.Width(w-6).Render(m.input.View()) + "\n")
 		// Show tab-complete suggestions for file import.
 		if m.action == actionImportFile && len(m.completions) > 1 {
 			const maxShow = 5
@@ -478,7 +478,7 @@ func (m ConfigScreenModel) View() string {
 			}
 			for i, c := range shown {
 				if i == m.completionIdx {
-					b.WriteString(StyleResultSelected.Copy().Width(w - 4).Render("  "+c) + "\n")
+					b.WriteString(StyleResultSelected.Width(w - 4).Render("  "+c) + "\n")
 				} else {
 					b.WriteString(StyleResultNormal.Render("  "+c) + "\n")
 				}

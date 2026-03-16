@@ -16,7 +16,6 @@ var (
 	colorError      lipgloss.Color
 	colorMuted      lipgloss.Color
 	colorText       lipgloss.Color
-	colorBackground lipgloss.Color
 	colorSelected   lipgloss.Color
 )
 
@@ -101,7 +100,6 @@ func ApplyTheme(s config.AppSettings) {
 	colorError = lipgloss.Color(s.ColorError)
 	colorMuted = lipgloss.Color(s.ColorMuted)
 	colorText = lipgloss.Color(s.ColorText)
-	colorBackground = lipgloss.Color(s.ColorBackground)
 	colorSelected = lipgloss.Color(s.ColorSelected)
 
 	// Title bar.

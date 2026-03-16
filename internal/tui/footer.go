@@ -20,7 +20,7 @@ func renderFooter(w int, left, right string) string {
 	if gap < 0 {
 		gap = 0
 	}
-	bar := StyleStatus.Copy().Padding(0, 0).Width(w)
+	bar := StyleStatus.Padding(0, 0).Width(w)
 	return bar.Render(left + strings.Repeat(" ", gap) + right)
 }
 

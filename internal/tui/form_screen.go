@@ -33,7 +33,6 @@ type FormModel struct {
 	runOnEnter  bool
 	width       int
 	height      int
-	scroll      int // vertical scroll offset for the form
 }
 
 // NewFormModel creates a new form for the given option.
@@ -225,13 +224,13 @@ func (m FormModel) View() string {
 	var b strings.Builder
 
 	// ── Title bar ─────────────────────────────────────────────────────────
-	title := StyleTitle.Copy().Width(w).Render(
+	title := StyleTitle.Width(w).Render(
 		"⚡ " + AppDisplayName + StyleResultDesc.Render("  ← Esc to go back"),
 	)
 	b.WriteString(title + "\n")
 
 	// ── Command header ────────────────────────────────────────────────────
-	header := StyleFormHeader.Copy().Width(w - 4).Render(
+	header := StyleFormHeader.Width(w - 4).Render(
 		StyleResultCommand.Render(m.cmd.Name) +
 			"  " + StyleResultOption.Render(m.opt.Name) +
 			"\n" + StyleResultDesc.Render(m.opt.Description),
@@ -271,15 +270,15 @@ func (m FormModel) View() string {
 			}
 
 			b.WriteString("  " + label + "\n")
-			b.WriteString(rowStyle.Copy().Width(w-6).Render(checkbox) + "\n\n")
+			b.WriteString(rowStyle.Width(w-6).Render(checkbox) + "\n\n")
 			continue
 		}
 
 		var inputView string
 		if i == m.focus {
-			inputView = StyleInputFocused.Copy().Width(w - 6).Render(m.inputs[i].View())
+			inputView = StyleInputFocused.Width(w - 6).Render(m.inputs[i].View())
 		} else {
-			inputView = StyleInputBlurred.Copy().Width(w - 6).Render(m.inputs[i].View())
+			inputView = StyleInputBlurred.Width(w - 6).Render(m.inputs[i].View())
 		}
 
 		b.WriteString("  " + label + desc + "\n")
@@ -305,7 +304,7 @@ func (m FormModel) View() string {
 	b.WriteString("\n")
 	if m.builtCmd != "" {
 		previewLabel := StylePreviewLabel.Render("  $ ")
-		preview := StylePreviewBox.Copy().Width(w - 4).Render(m.builtCmd)
+		preview := StylePreviewBox.Width(w - 4).Render(m.builtCmd)
 		b.WriteString(previewLabel + "\n")
 		b.WriteString(preview + "\n")
 	}
@@ -356,7 +355,7 @@ func (m FormModel) renderCompletions(width int) string {
 		rows = append(rows, StyleResultDesc.Render(fmt.Sprintf("  … %d more", len(m.completions)-maxShow)))
 	}
 	content := strings.Join(rows, "\n")
-	return StyleCompletionBox.Copy().Width(width - 6).Render(content)
+	return StyleCompletionBox.Width(width - 6).Render(content)
 }
 
 func (m FormModel) allRequiredFilled() bool {
@@ -490,4 +489,3 @@ func commonPrefix(strs []string) string {
 	}
 	return prefix
 }
-
