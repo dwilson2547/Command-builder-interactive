@@ -575,7 +575,7 @@ func (m EditScreenModel) View() string {
 		levelLabel = "Inputs"
 	}
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ " + AppDisplayName + " " + StyleTitleVersion.Render(AppVersion) + "  " +
+		"⚡ " + AppDisplayName + "  " +
 			StyleResultDesc.Render("Edit Config: "+m.cfg.Name+" › "+levelLabel),
 	)
 	b.WriteString(title + "\n")

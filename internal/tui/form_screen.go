@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dwilson2547/command-builder/internal/config"
 )
@@ -19,18 +21,23 @@ type FormModel struct {
 	inputs []textinput.Model
 	focus  int // index of focused input
 
+	// flagStates tracks the on/off state of each input with type "flag".
+	// Indexed in parallel with opt.Inputs.
+	flagStates []bool
+
 	completions    []string
 	compIdx        int
 	showCompletion bool
 
-	builtCmd string
-	width    int
-	height   int
-	scroll   int // vertical scroll offset for the form
+	builtCmd    string
+	runOnEnter  bool
+	width       int
+	height      int
+	scroll      int // vertical scroll offset for the form
 }
 
 // NewFormModel creates a new form for the given option.
-func NewFormModel(cfg *config.Config, cmd *config.Command, opt *config.Option, w, h int) FormModel {
+func NewFormModel(cfg *config.Config, cmd *config.Command, opt *config.Option, w, h int, runOnEnter bool) FormModel {
 	inputs := make([]textinput.Model, len(opt.Inputs))
 	for i, inp := range opt.Inputs {
 		ti := textinput.New()
@@ -47,13 +54,16 @@ func NewFormModel(cfg *config.Config, cmd *config.Command, opt *config.Option, w
 		inputs[i] = ti
 	}
 
+	flagStates := make([]bool, len(opt.Inputs))
 	m := FormModel{
-		cfg:    cfg,
-		cmd:    cmd,
-		opt:    opt,
-		inputs: inputs,
-		width:  w,
-		height: h,
+		cfg:        cfg,
+		cmd:        cmd,
+		opt:        opt,
+		inputs:     inputs,
+		flagStates: flagStates,
+		runOnEnter: runOnEnter,
+		width:      w,
+		height:     h,
 	}
 	m.rebuildCommand()
 	return m
@@ -88,6 +98,14 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyEsc:
 			return m, func() tea.Msg { return backToSearchMsg{} }
+
+		case tea.KeySpace:
+			// Toggle flag-type inputs.
+			if m.focus < len(m.opt.Inputs) && m.opt.Inputs[m.focus].Type == "flag" {
+				m.flagStates[m.focus] = !m.flagStates[m.focus]
+				m.rebuildCommand()
+				return m, nil
+			}
 
 		case tea.KeyEnter:
 			if m.builtCmd != "" && m.allRequiredFilled() {
@@ -171,13 +189,17 @@ func (m FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Delegate to focused input.
-	if m.focus < len(m.inputs) {
+	// Delegate to focused input (skip flag types — they use Space to toggle).
+	if m.focus < len(m.inputs) && m.focus < len(m.opt.Inputs) && m.opt.Inputs[m.focus].Type != "flag" {
 		var cmd tea.Cmd
 		m.inputs[m.focus], cmd = m.inputs[m.focus].Update(msg)
 		m.rebuildCommand()
-		// Recompute completions live.
-		if m.focus < len(m.opt.Inputs) {
+		// Recompute completions live — but only when the user is NOT already
+		// browsing the completion list. If showCompletion is true, the input
+		// value has been set to the currently-highlighted completion; recomputing
+		// here would replace the original listing with that subdirectory's
+		// contents and break navigation.
+		if !m.showCompletion {
 			inp := m.opt.Inputs[m.focus]
 			if inp.Type == "file" || inp.Type == "dir" {
 				prefix := m.inputs[m.focus].Value()
@@ -204,7 +226,7 @@ func (m FormModel) View() string {
 
 	// ── Title bar ─────────────────────────────────────────────────────────
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ " + AppDisplayName + " " + StyleTitleVersion.Render(AppVersion) + StyleResultDesc.Render("  ← Esc to go back"),
+		"⚡ " + AppDisplayName + StyleResultDesc.Render("  ← Esc to go back"),
 	)
 	b.WriteString(title + "\n")
 
@@ -226,6 +248,32 @@ func (m FormModel) View() string {
 		}
 		label := labelStyle.Render(inp.Name) + req
 		desc := StyleInputDesc.Render("  " + inp.Description)
+
+		if inp.Type == "flag" {
+			on := m.flagStates[i]
+			focused := i == m.focus
+
+			var checkbox string
+			var rowStyle lipgloss.Style
+			if focused {
+				if on {
+					checkbox = "✓ " + inp.Description + "  (Space: toggle)"
+				} else {
+					checkbox = "  " + inp.Description + "  (Space: toggle)"
+				}
+				rowStyle = StyleFlagFocused
+			} else if on {
+				checkbox = "✓ " + inp.Description
+				rowStyle = StyleFlagOn
+			} else {
+				checkbox = "  " + inp.Description
+				rowStyle = StyleFlagOff
+			}
+
+			b.WriteString("  " + label + "\n")
+			b.WriteString(rowStyle.Copy().Width(w-6).Render(checkbox) + "\n\n")
+			continue
+		}
 
 		var inputView string
 		if i == m.focus {
@@ -271,7 +319,11 @@ func (m FormModel) View() string {
 
 	var statusMsg string
 	if m.allRequiredFilled() && m.builtCmd != "" {
-		statusMsg = StyleStatusKey.Render(" Enter") + StyleStatus.Render(" copy command & quit") +
+		enterLabel := "copy command & quit"
+		if m.runOnEnter {
+			enterLabel = "run command & quit"
+		}
+		statusMsg = StyleStatusKey.Render(" Enter") + StyleStatus.Render(" "+enterLabel) +
 			StyleStatusKey.Render("  Esc") + StyleStatus.Render(" back")
 	} else {
 		missing := m.missingRequired()
@@ -326,15 +378,36 @@ func (m FormModel) missingRequired() []string {
 	return missing
 }
 
+// spaceCollapser collapses consecutive whitespace into a single space.
+var spaceCollapser = regexp.MustCompile(`\s{2,}`)
+
 func (m *FormModel) rebuildCommand() {
 	result := m.opt.Template
 	for i, inp := range m.opt.Inputs {
-		val := m.inputs[i].Value()
-		if val == "" {
-			val = "<" + inp.Name + ">"
+		var val string
+		if inp.Type == "flag" {
+			// Flags: use the Default string when toggled on, empty when off.
+			if m.flagStates[i] {
+				val = inp.Default
+			}
+		} else {
+			val = m.inputs[i].Value()
 		}
-		result = strings.ReplaceAll(result, "{{"+inp.Name+"}}", val)
+
+		if val == "" {
+			if inp.Required {
+				// Required but unfilled: show placeholder.
+				result = strings.ReplaceAll(result, "{"+"{" +inp.Name+"}}", "<"+inp.Name+">")
+			} else {
+				// Optional and empty: omit entirely from the command.
+				result = strings.ReplaceAll(result, "{"+"{" +inp.Name+"}}", "")
+			}
+		} else {
+			result = strings.ReplaceAll(result, "{"+"{" +inp.Name+"}}", val)
+		}
 	}
+	// Clean up extra whitespace left by omitted optional arguments.
+	result = strings.TrimSpace(spaceCollapser.ReplaceAllString(result, " "))
 	m.builtCmd = result
 }
 

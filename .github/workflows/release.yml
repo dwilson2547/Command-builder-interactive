@@ -98,9 +98,9 @@ jobs:
           NEXT="${{ steps.versions.outputs.next }}"
           VERSION_NUM="${NEXT#v}"   # strip leading 'v' for the markdown header match
           # Pull everything between the first "## [X.Y.Z]" header and the next one.
-          NOTES=$(awk "/^## \[${VERSION_NUM}\]/{found=1; next} found && /^## \[/{exit} found{print}" docs/changelog.md)
+          NOTES=$(awk "/^## \[${VERSION_NUM}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
           if [ -z "$NOTES" ]; then
-            NOTES="See [CHANGELOG](docs/changelog.md) for details."
+            NOTES="See [CHANGELOG](CHANGELOG.md) for details."
           fi
           # Write to a temp file to avoid quoting issues in GITHUB_OUTPUT.
           echo "$NOTES" > /tmp/release_notes.md

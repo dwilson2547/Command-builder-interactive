@@ -11,6 +11,7 @@ import (
 // colour codes ("0"–"255") or hex colours ("#rrggbb").
 type AppSettings struct {
 	AppName         string `json:"app_name"`
+	RunOnEnter      bool   `json:"run_on_enter"`
 	ColorPrimary    string `json:"color_primary"`
 	ColorAccent     string `json:"color_accent"`
 	ColorSuccess    string `json:"color_success"`
@@ -26,6 +27,7 @@ type AppSettings struct {
 func DefaultSettings() AppSettings {
 	return AppSettings{
 		AppName:         "Command Builder",
+		RunOnEnter:      false,
 		ColorPrimary:    "39",
 		ColorAccent:     "213",
 		ColorSuccess:    "76",
@@ -87,6 +89,8 @@ func LoadSettings() AppSettings {
 	if tmp.AppName != "" {
 		s.AppName = tmp.AppName
 	}
+	// bool: always copy (false is a valid user choice)
+	s.RunOnEnter = tmp.RunOnEnter
 	return s
 }
 

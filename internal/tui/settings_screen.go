@@ -31,12 +31,13 @@ type settingsEntry struct {
 	setVal      func(*config.AppSettings, string)
 	defVal      string
 	isColor     bool   // renders colour swatch; false = plain text field
+	isToggle    bool   // renders [✓]/[ ] toggle, toggled with Enter (no text input)
 	placeholder string // hint shown inside the textinput
 }
 
 // firstColorIndex is the index of the first colour entry in settingsEntries.
 // All entries before it are general (non-colour) settings.
-const firstColorIndex = 1
+const firstColorIndex = 2
 
 var settingsEntries = func() []settingsEntry {
 	def := config.DefaultSettings()
@@ -50,6 +51,19 @@ var settingsEntries = func() []settingsEntry {
 			defVal:      def.AppName,
 			isColor:     false,
 			placeholder: "e.g. devtools or My CLI",
+		},
+		{
+			label:    "Run on Enter",
+			desc:     "Execute the built command immediately instead of printing it",
+			getVal: func(s config.AppSettings) string {
+				if s.RunOnEnter {
+					return "true"
+				}
+				return "false"
+			},
+			setVal: func(s *config.AppSettings, v string) { s.RunOnEnter = v == "true" },
+			defVal:   "false",
+			isToggle: true,
 		},
 		// ── Colour Palette ─────────────────────────────────────────────────────
 		{
@@ -218,10 +232,16 @@ func (m SettingsScreenModel) updateBrowse(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selected++
 		}
 	case tea.KeyEnter:
+		if settingsEntries[m.selected].isToggle {
+			return m.toggleBool()
+		}
 		return m.startEditing()
 	case tea.KeyRunes:
 		switch string(msg.Runes) {
 		case "e", "E":
+			if settingsEntries[m.selected].isToggle {
+				return m.toggleBool()
+			}
 			return m.startEditing()
 		case "r":
 			// Reset selected entry to its default value.
@@ -278,12 +298,30 @@ func (m SettingsScreenModel) updateConfirmBashrc(msg tea.KeyMsg) (tea.Model, tea
 
 func (m SettingsScreenModel) startEditing() (tea.Model, tea.Cmd) {
 	e := settingsEntries[m.selected]
+	if e.isToggle {
+		return m.toggleBool()
+	}
 	m.input.SetValue(e.getVal(m.settings))
 	m.input.Placeholder = e.placeholder
 	m.input.CursorEnd()
 	m.editing = true
 	m.message = ""
 	return m, m.input.Focus()
+}
+
+// toggleBool flips a boolean toggle entry and persists the change.
+func (m SettingsScreenModel) toggleBool() (tea.Model, tea.Cmd) {
+	e := settingsEntries[m.selected]
+	if e.getVal(m.settings) == "true" {
+		e.setVal(&m.settings, "false")
+	} else {
+		e.setVal(&m.settings, "true")
+	}
+	m.message = StyleInfo.Render(fmt.Sprintf("Updated \"%s\"", e.label))
+	if svErr := config.SaveSettings(m.settings); svErr != nil {
+		m.message = StyleError.Render("Save failed: " + svErr.Error())
+	}
+	return m, func() tea.Msg { return themeChangedMsg{} }
 }
 
 func (m SettingsScreenModel) updateEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -308,8 +346,8 @@ func (m SettingsScreenModel) updateEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		ApplyTheme(m.settings)
-		if !e.isColor {
-			// Non-colour entry (e.g. App Name): offer to create a shell alias.
+		if !e.isColor && !e.isToggle {
+			// Non-colour, non-toggle entry (e.g. App Name): offer to create a shell alias.
 			aliasID := bashrcAliasName(val)
 			m.pendingName = val
 			m.pendingAliasLine = fmt.Sprintf("alias %s='command-builder'", aliasID)
@@ -340,8 +378,7 @@ func (m SettingsScreenModel) View() string {
 
 	// ── Title bar ──────────────────────────────────────────────────────────
 	title := StyleTitle.Copy().Width(w).Render(
-		"⚡ " + AppDisplayName + " " + StyleTitleVersion.Render(AppVersion) + "  " +
-			StyleResultDesc.Render("Settings"),
+		"⚡ " + AppDisplayName + "  " + StyleResultDesc.Render("Settings"),
 	)
 	b.WriteString(title + "\n")
 
@@ -375,6 +412,22 @@ func (m SettingsScreenModel) View() string {
 					StyleResultCommand.Render(labelPart) +
 					"  " + swatch + "  " +
 					StyleResultOption.Render(colorValPart) +
+					"  " + StyleResultDesc.Render(e.desc)
+				b.WriteString(line + "\n")
+			}
+		} else if e.isToggle {
+			checkbox := "[ ]"
+			if val == "true" {
+				checkbox = "[✓]"
+			}
+			if i == m.selected {
+				b.WriteString(StyleConfigItemSelected.Copy().Width(w).Render(
+					"  "+labelPart+"  "+checkbox+"  "+e.desc,
+				) + "\n")
+			} else {
+				line := "  " +
+					StyleResultCommand.Render(labelPart) +
+					"  " + StyleResultOption.Render(checkbox) +
 					"  " + StyleResultDesc.Render(e.desc)
 				b.WriteString(line + "\n")
 			}

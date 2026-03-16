@@ -11,7 +11,7 @@ Configs are YAML files that define commands, options, input placeholders, and te
 
 ## Changelog
 
-- All notable changes must be documented in `docs/changelog.md`.
+- All notable changes must be documented in `CHANGELOG.md`.
 - Follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 - The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Increment the minor version** for every change unless the user specifies otherwise.
@@ -27,7 +27,7 @@ Configs are YAML files that define commands, options, input placeholders, and te
 
 - Location: `todo.md` in the project root.
 - Check off items as they are completed (`- [x]`).
-- After completing an item, also add a corresponding entry to `docs/changelog.md`.
+- After completing an item, also add a corresponding entry to `CHANGELOG.md`.
 
 ---
 
@@ -70,8 +70,8 @@ command-builder-interactive/
 │   │   └── search_test.go
 │   └── plugin/
 │       └── plugin.go          # Thin wrapper: URL import via Manager
+├── CHANGELOG.md
 ├── docs/
-│   ├── changelog.md
 │   ├── config-format.md
 │   ├── plugins.md
 │   ├── usage.md
@@ -168,6 +168,13 @@ Every screen is a struct that implements `tea.Model` (`Init`, `Update`, `View`).
 ```
 Produces the `./command-builder` binary.
 
+### Linting
+Run the linter after making any code changes:
+```bash
+./lint.sh
+```
+Installs `golangci-lint` automatically if not present. Fix all reported issues before committing.
+
 ---
 
 ## Docs to Consult
@@ -177,4 +184,4 @@ Produces the `./command-builder` binary.
 | Config YAML schema | `docs/config-format.md` |
 | Keyboard shortcuts & search filters | `docs/usage.md` |
 | URL import / sharing | `docs/plugins.md` |
-| Past changes | `docs/changelog.md` |
+| Past changes | `CHANGELOG.md` |

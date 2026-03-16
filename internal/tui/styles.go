@@ -72,6 +72,11 @@ var (
 	// Error / info banners.
 	StyleError lipgloss.Style
 	StyleInfo  lipgloss.Style
+
+	// Flag toggle inputs.
+	StyleFlagOn      lipgloss.Style // flag enabled (unfocused)
+	StyleFlagOff     lipgloss.Style // flag disabled (unfocused)
+	StyleFlagFocused lipgloss.Style // flag row when focused
 )
 
 func init() {
@@ -244,5 +249,26 @@ func ApplyTheme(s config.AppSettings) {
 
 	StyleInfo = lipgloss.NewStyle().
 		Foreground(colorSuccess).
+		Padding(0, 1)
+
+	// Flag toggle inputs.
+	StyleFlagOn = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorSuccess).
+		Foreground(colorSuccess).
+		Bold(true).
+		Padding(0, 1)
+
+	StyleFlagOff = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorMuted).
+		Foreground(colorMuted).
+		Padding(0, 1)
+
+	StyleFlagFocused = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorAccent).
+		Foreground(colorAccent).
+		Bold(true).
 		Padding(0, 1)
 }

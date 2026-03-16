@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"os/exec"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dwilson2547/command-builder/internal/config"
@@ -34,10 +35,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Print the final built command so the user can use it.
+	// Print or run the final built command.
 	if a, ok := finalModel.(tui.AppModel); ok {
 		if cmd := a.GetFinalCommand(); cmd != "" {
-			fmt.Println(cmd)
+			if a.GetSettings().RunOnEnter {
+				shell := os.Getenv("SHELL")
+				if shell == "" {
+					shell = "/bin/sh"
+				}
+				c := exec.Command(shell, "-c", cmd)
+				c.Stdin = os.Stdin
+				c.Stdout = os.Stdout
+				c.Stderr = os.Stderr
+				if runErr := c.Run(); runErr != nil {
+					fmt.Fprintf(os.Stderr, "Error running command: %v\n", runErr)
+					os.Exit(1)
+				}
+			} else {
+				fmt.Println(cmd)
+			}
 		}
 	}
 }

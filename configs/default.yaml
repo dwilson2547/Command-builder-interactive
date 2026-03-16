@@ -129,6 +129,34 @@ commands:
   - name: "tar"
     description: "Tape archive utility"
     options:
+      - name: "create"
+        description: "Create archive with optional compression flags"
+        template: "tar -cv{{gzip}}{{bzip2}}{{xz}}f {{output_file}} {{source}}"
+        tags: ["archive", "pack", "bundle", "compress", "flexible"]
+        inputs:
+          - name: "gzip"
+            type: "flag"
+            description: "gzip compression (-z)"
+            required: false
+            default: "z"
+          - name: "bzip2"
+            type: "flag"
+            description: "bzip2 compression (-j)"
+            required: false
+            default: "j"
+          - name: "xz"
+            type: "flag"
+            description: "xz compression (-J)"
+            required: false
+            default: "J"
+          - name: "output_file"
+            type: "file"
+            description: "Output archive file"
+            required: true
+          - name: "source"
+            type: "dir"
+            description: "Source file or directory"
+            required: true
       - name: "create-tarball"
         description: "Create tar archive"
         template: "tar -cvf {{output_file}} {{source}}"

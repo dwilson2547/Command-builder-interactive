@@ -69,6 +69,9 @@ func NewApp(mgr *config.Manager, settings config.AppSettings) AppModel {
 // GetFinalCommand returns the command built by the user (if any).
 func (a AppModel) GetFinalCommand() string { return a.finalCmd }
 
+// GetSettings returns the current application settings at the time the program exits.
+func (a AppModel) GetSettings() config.AppSettings { return a.currentSettings }
+
 // Init satisfies tea.Model.
 func (a AppModel) Init() tea.Cmd {
 	return a.search.Init()
@@ -110,7 +113,7 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, tea.Batch(cmds...)
 
 	case selectOptionMsg:
-		a.form = NewFormModel(msg.cfg, msg.cmd, msg.opt, a.width, a.height)
+		a.form = NewFormModel(msg.cfg, msg.cmd, msg.opt, a.width, a.height, a.currentSettings.RunOnEnter)
 		a.activeScreen = screenForm
 		return a, a.form.Init()
 
