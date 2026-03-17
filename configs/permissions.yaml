@@ -1,0 +1,247 @@
+name: "permissions"
+description: "File and directory permission management: chmod, chown, acl"
+version: "1.0.0"
+commands:
+  - name: "chmod"
+    description: "Change file mode bits"
+    options:
+      - name: "set-permissions"
+        description: "Set permissions on a file or directory using octal or symbolic notation"
+        template: "chmod{{verbose}} {{mode}} {{target}}"
+        tags: ["set permissions", "chmod", "file mode"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "mode"
+            type: "string"
+            description: "Permission mode, e.g. 644, 755, u+x, go-w"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes as they are made (-v)"
+            required: false
+            default: " -v"
+
+      - name: "add-execute"
+        description: "Add execute permission for the owner (u+x)"
+        template: "chmod{{verbose}} u+x {{target}}"
+        tags: ["add execute", "make executable", "chmod +x"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+      - name: "remove-write"
+        description: "Remove write permission from group and others (go-w)"
+        template: "chmod{{verbose}} go-w {{target}}"
+        tags: ["remove write", "protect file", "chmod go-w"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+      - name: "recursive-chmod"
+        description: "Apply permissions recursively to a directory tree"
+        template: "chmod -R{{verbose}} {{mode}} {{target}}"
+        tags: ["recursive chmod", "chmod -R", "directory permissions"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "Directory to recurse into"
+            required: true
+          - name: "mode"
+            type: "string"
+            description: "Permission mode, e.g. 755 or u+rX"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+      - name: "set-from-reference"
+        description: "Set permissions to match those of a reference file"
+        template: "chmod{{verbose}} --reference={{reference}} {{target}}"
+        tags: ["copy permissions", "reference chmod", "match permissions"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory to update"
+            required: true
+          - name: "reference"
+            type: "string"
+            description: "Reference file whose permissions will be copied"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+  - name: "chown"
+    description: "Change file owner and group"
+    options:
+      - name: "change-owner"
+        description: "Change the owner of a file or directory"
+        template: "chown{{verbose}} {{owner}} {{target}}"
+        tags: ["change owner", "chown", "file owner"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "owner"
+            type: "string"
+            description: "New owner username or UID"
+            required: true
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (uid: \"$3\")\"}' /etc/passwd 2>/dev/null"
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+      - name: "change-group"
+        description: "Change the group of a file or directory"
+        template: "chown{{verbose}} :{{group}} {{target}}"
+        tags: ["change group", "chgrp", "file group"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "group"
+            type: "string"
+            description: "New group name or GID"
+            required: true
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (gid: \"$3\")\"}' /etc/group 2>/dev/null"
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+      - name: "change-owner-and-group"
+        description: "Change both owner and group at once"
+        template: "chown{{verbose}} {{owner}}:{{group}} {{target}}"
+        tags: ["change owner and group", "chown:group", "ownership"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "owner"
+            type: "string"
+            description: "New owner username or UID"
+            required: true
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (uid: \"$3\")\"}' /etc/passwd 2>/dev/null"
+          - name: "group"
+            type: "string"
+            description: "New group name or GID"
+            required: true
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (gid: \"$3\")\"}' /etc/group 2>/dev/null"
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+      - name: "recursive-chown"
+        description: "Recursively change owner and group for a directory tree"
+        template: "chown -R{{verbose}} {{owner}}:{{group}} {{target}}"
+        tags: ["recursive chown", "chown -R", "directory ownership"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "Directory to recurse into"
+            required: true
+          - name: "owner"
+            type: "string"
+            description: "New owner username or UID"
+            required: true
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (uid: \"$3\")\"}' /etc/passwd 2>/dev/null"
+          - name: "group"
+            type: "string"
+            description: "New group name or GID"
+            required: true
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (gid: \"$3\")\"}' /etc/group 2>/dev/null"
+          - name: "verbose"
+            type: "flag"
+            description: "Report changes (-v)"
+            required: false
+            default: " -v"
+
+  - name: "acl"
+    description: "Manage POSIX Access Control Lists (requires acl package)"
+    options:
+      - name: "get-acl"
+        description: "Display the ACL for a file or directory"
+        template: "getfacl{{recursive}} {{target}}"
+        tags: ["get acl", "getfacl", "view acl", "access control list"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "recursive"
+            type: "flag"
+            description: "Show ACLs recursively (-R)"
+            required: false
+            default: " -R"
+
+      - name: "set-acl"
+        description: "Grant ACL permissions to a user or group"
+        template: "setfacl{{modify}}{{recursive}} {{target}}"
+        tags: ["set acl", "setfacl", "grant permissions", "acl entry"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "modify"
+            type: "string"
+            description: "ACL entry to set, e.g. -m u:alice:rw or -m g:devs:rx"
+            required: true
+          - name: "recursive"
+            type: "flag"
+            description: "Apply recursively (-R)"
+            required: false
+            default: " -R"
+
+      - name: "remove-acl"
+        description: "Remove a specific ACL entry or all ACL entries from a file"
+        template: "setfacl{{remove}}{{remove_all}}{{recursive}} {{target}}"
+        tags: ["remove acl", "delete acl", "setfacl -x", "clear acl"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "File or directory path"
+            required: true
+          - name: "remove"
+            type: "string"
+            description: "Specific ACL entry to remove, e.g. -x u:alice (leave blank to skip)"
+            required: false
+          - name: "remove_all"
+            type: "flag"
+            description: "Remove all extended ACL entries (-b)"
+            required: false
+            default: " -b"
+          - name: "recursive"
+            type: "flag"
+            description: "Apply recursively (-R)"
+            required: false
+            default: " -R"

@@ -1,0 +1,347 @@
+name: "jq"
+description: "JSON processing and querying: query, transform, reduce, file"
+version: "1.0.0"
+commands:
+  - name: "query"
+    description: "Query and extract data from JSON"
+    options:
+      - name: "pretty-print"
+        description: "Pretty-print JSON input"
+        template: "{{input}} | jq{{raw}}{{compact}} '.'"
+        tags: ["format json", "pretty print", "colorize json"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON, e.g. cat file.json or curl -s https://api.example.com"
+            required: true
+          - name: "raw"
+            type: "flag"
+            description: "Output raw strings without quotes (-r)"
+            required: false
+            default: " -r"
+          - name: "compact"
+            type: "flag"
+            description: "Compact output on one line (-c)"
+            required: false
+            default: " -c"
+
+      - name: "select-field"
+        description: "Extract a top-level field from JSON"
+        template: "{{input}} | jq{{raw}} '.{{field}}'"
+        tags: ["get field", "extract key", "json field"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON, e.g. cat file.json"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field name to extract, e.g. name or status"
+            required: true
+          - name: "raw"
+            type: "flag"
+            description: "Output raw strings without quotes (-r)"
+            required: false
+            default: " -r"
+
+      - name: "select-nested"
+        description: "Extract a nested field using dot notation"
+        template: "{{input}} | jq{{raw}} '.{{path}}'"
+        tags: ["nested field", "deep key", "dot notation"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "path"
+            type: "string"
+            description: "Dot-notation path, e.g. user.address.city or items[0].name"
+            required: true
+          - name: "raw"
+            type: "flag"
+            description: "Output raw strings without quotes (-r)"
+            required: false
+            default: " -r"
+
+      - name: "filter-array"
+        description: "Iterate over a JSON array and extract a field from each element"
+        template: "{{input}} | jq{{raw}} '.{{array}}[] | .{{field}}'"
+        tags: ["array field", "map array", "iterate array"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "array"
+            type: "string"
+            description: "Array field name (leave blank if root is an array)"
+            required: false
+          - name: "field"
+            type: "string"
+            description: "Field to extract from each element"
+            required: true
+          - name: "raw"
+            type: "flag"
+            description: "Output raw strings without quotes (-r)"
+            required: false
+            default: " -r"
+
+      - name: "select-where"
+        description: "Filter array elements matching a condition"
+        template: "{{input}} | jq{{raw}} '[.{{array}}[] | select(.{{field}} == \"{{value}}\")]'"
+        tags: ["filter where", "select condition", "query array"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "array"
+            type: "string"
+            description: "Array field name (leave blank if root is an array)"
+            required: false
+          - name: "field"
+            type: "string"
+            description: "Field to test"
+            required: true
+          - name: "value"
+            type: "string"
+            description: "Value to match"
+            required: true
+          - name: "raw"
+            type: "flag"
+            description: "Output raw strings without quotes (-r)"
+            required: false
+            default: " -r"
+
+      - name: "keys"
+        description: "List the keys of a JSON object"
+        template: "{{input}} | jq 'keys'"
+        tags: ["object keys", "list keys", "json keys"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+
+      - name: "values"
+        description: "List the values of a JSON object as an array"
+        template: "{{input}} | jq '[.[]]'"
+        tags: ["object values", "list values", "json values"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+
+  - name: "transform"
+    description: "Reshape and transform JSON data"
+    options:
+      - name: "map"
+        description: "Apply a transformation to every element in an array"
+        template: "{{input}} | jq '[.[] | {{expression}}]'"
+        tags: ["map transform", "array transform", "jq map"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "expression"
+            type: "string"
+            description: "jq expression to apply to each element, e.g. .name or {id: .id, label: .name}"
+            required: true
+
+      - name: "to-csv"
+        description: "Convert an array of arrays to CSV"
+        template: "{{input}} | jq -r '.[] | @csv'"
+        tags: ["json to csv", "csv output", "export csv"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces a JSON array of arrays"
+            required: true
+
+      - name: "to-entries"
+        description: "Convert an object to an array of {key, value} pairs"
+        template: "{{input}} | jq 'to_entries'"
+        tags: ["to entries", "object to array", "key value pairs"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces a JSON object"
+            required: true
+
+      - name: "from-entries"
+        description: "Convert an array of {key, value} pairs back to an object"
+        template: "{{input}} | jq 'from_entries'"
+        tags: ["from entries", "array to object", "rebuild object"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces a JSON array of key/value pairs"
+            required: true
+
+      - name: "del-field"
+        description: "Delete a field from a JSON object"
+        template: "{{input}} | jq 'del(.{{field}})'"
+        tags: ["remove field", "delete key", "strip field"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field path to delete, e.g. password or user.token"
+            required: true
+
+      - name: "add-field"
+        description: "Add or overwrite a field in a JSON object"
+        template: "{{input}} | jq '. + {\"{{field}}\": {{value}}}'"
+        tags: ["add field", "set field", "merge field"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces a JSON object"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field name to add or overwrite"
+            required: true
+          - name: "value"
+            type: "string"
+            description: "JSON value to set, e.g. \"active\" or 42 or true"
+            required: true
+
+  - name: "reduce"
+    description: "Aggregate and summarise JSON arrays"
+    options:
+      - name: "length"
+        description: "Count the number of elements in an array or characters in a string"
+        template: "{{input}} | jq '.{{path}} | length'"
+        tags: ["count", "array length", "json length"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "path"
+            type: "string"
+            description: "Path to the array or string (leave blank for root)"
+            required: false
+
+      - name: "first"
+        description: "Get the first element of an array"
+        template: "{{input}} | jq 'first(.{{path}}[])'"
+        tags: ["first element", "head", "array first"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "path"
+            type: "string"
+            description: "Path to the array (leave blank for root array)"
+            required: false
+
+      - name: "last"
+        description: "Get the last element of an array"
+        template: "{{input}} | jq 'last(.{{path}}[])'"
+        tags: ["last element", "tail", "array last"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "path"
+            type: "string"
+            description: "Path to the array (leave blank for root array)"
+            required: false
+
+      - name: "unique"
+        description: "Get unique values from an array"
+        template: "{{input}} | jq '[.{{path}}[] | .{{field}}] | unique'"
+        tags: ["dedupe", "unique values", "distinct"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces JSON"
+            required: true
+          - name: "path"
+            type: "string"
+            description: "Path to the array (leave blank for root)"
+            required: false
+          - name: "field"
+            type: "string"
+            description: "Field within each element to deduplicate on"
+            required: true
+
+      - name: "group-by"
+        description: "Group array elements by a field value"
+        template: "{{input}} | jq 'group_by(.{{field}})'"
+        tags: ["group by", "partition", "aggregate"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces a JSON array"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field to group by"
+            required: true
+
+      - name: "sort-by"
+        description: "Sort a JSON array by a field"
+        template: "{{input}} | jq 'sort_by(.{{field}}){{reverse}}'"
+        tags: ["sort array", "order by", "sort json"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command that produces a JSON array"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field to sort by"
+            required: true
+          - name: "reverse"
+            type: "flag"
+            description: "Reverse sort order (| reverse)"
+            required: false
+            default: " | reverse"
+
+  - name: "file"
+    description: "Process JSON files directly"
+    options:
+      - name: "from-file"
+        description: "Apply a jq filter to a JSON file"
+        template: "jq{{raw}} '{{filter}}' {{file}}"
+        tags: ["read json file", "query file", "jq file"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Path to the JSON file"
+            required: true
+          - name: "filter"
+            type: "string"
+            description: "jq filter expression"
+            required: true
+            default: "."
+          - name: "raw"
+            type: "flag"
+            description: "Output raw strings without quotes (-r)"
+            required: false
+            default: " -r"
+
+      - name: "slurp-multiple"
+        description: "Read multiple JSON files and combine them into an array"
+        template: "jq -s '{{filter}}' {{files}}"
+        tags: ["merge json files", "slurp", "combine json"]
+        inputs:
+          - name: "files"
+            type: "string"
+            description: "Space-separated file paths or glob, e.g. data/*.json"
+            required: true
+          - name: "filter"
+            type: "string"
+            description: "jq filter applied to the combined array"
+            required: false
+            default: "."

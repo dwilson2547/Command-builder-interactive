@@ -1,0 +1,210 @@
+name: "disk"
+description: "Disk usage and filesystem inspection: usage, filesystem, io"
+version: "1.0.0"
+commands:
+  - name: "usage"
+    description: "Inspect disk space and directory sizes"
+    options:
+      - name: "disk-free"
+        description: "Show disk space usage for all mounted filesystems"
+        template: "df{{human}}{{type}}{{exclude}}"
+        tags: ["disk free", "df", "disk space", "filesystem usage"]
+        inputs:
+          - name: "human"
+            type: "flag"
+            description: "Human-readable sizes (-h)"
+            required: false
+            default: " -h"
+          - name: "type"
+            type: "string"
+            description: "Limit to a filesystem type, e.g. -t ext4 or -t tmpfs (leave blank for all)"
+            required: false
+          - name: "exclude"
+            type: "string"
+            description: "Exclude a filesystem type, e.g. -x tmpfs (leave blank to skip)"
+            required: false
+
+      - name: "disk-free-human"
+        description: "Show disk space with human-readable sizes and filesystem type"
+        template: "df -hT{{type}}"
+        tags: ["disk free human", "df -hT", "filesystem type"]
+        inputs:
+          - name: "type"
+            type: "string"
+            description: "Limit to a filesystem type, e.g. -t ext4 (leave blank for all)"
+            required: false
+
+      - name: "inode-usage"
+        description: "Show inode usage for all mounted filesystems"
+        template: "df -i{{human}}"
+        tags: ["inode usage", "df -i", "inodes"]
+        inputs:
+          - name: "human"
+            type: "flag"
+            description: "Human-readable inode counts (-h)"
+            required: false
+            default: " -h"
+
+      - name: "dir-size"
+        description: "Show the total disk usage of a directory"
+        template: "du -sh{{apparent}} {{path}}"
+        tags: ["directory size", "du -sh", "folder size"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Directory path to measure"
+            required: true
+            default: "."
+          - name: "apparent"
+            type: "flag"
+            description: "Show apparent (file) size rather than disk usage (--apparent-size)"
+            required: false
+            default: " --apparent-size"
+
+      - name: "dir-size-sorted"
+        description: "List subdirectory sizes sorted from largest to smallest"
+        template: "du -sh{{apparent}} {{path}}/* | sort -rh"
+        tags: ["sorted directory sizes", "largest directories", "du sorted"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Parent directory to scan"
+            required: true
+            default: "."
+          - name: "apparent"
+            type: "flag"
+            description: "Show apparent size (--apparent-size)"
+            required: false
+            default: " --apparent-size"
+
+      - name: "find-large-files"
+        description: "Find the largest files under a directory"
+        template: "find {{path}} -type f -printf '%s\\t%p\\n' | sort -rn | head -{{count}}"
+        tags: ["large files", "biggest files", "disk hogs"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Directory to search"
+            required: true
+            default: "."
+          - name: "count"
+            type: "string"
+            description: "Number of results to show"
+            required: true
+            default: "20"
+
+  - name: "filesystem"
+    description: "List, mount, and unmount filesystems"
+    options:
+      - name: "list-mounts"
+        description: "List all mounted filesystems"
+        template: "findmnt{{real}}{{type}}"
+        tags: ["list mounts", "mounted filesystems", "findmnt"]
+        inputs:
+          - name: "real"
+            type: "flag"
+            description: "Show only real (non-virtual) filesystems (-R not set; use --real)"
+            required: false
+            default: " --real"
+          - name: "type"
+            type: "string"
+            description: "Filter by filesystem type, e.g. -t ext4 (leave blank for all)"
+            required: false
+
+      - name: "mount"
+        description: "Mount a device or image to a directory"
+        template: "mount{{type}}{{options}} {{device}} {{mountpoint}}"
+        tags: ["mount", "attach filesystem", "mount device"]
+        inputs:
+          - name: "device"
+            type: "string"
+            description: "Device path or image file, e.g. /dev/sdb1 or disk.img"
+            required: true
+          - name: "mountpoint"
+            type: "string"
+            description: "Mount point directory"
+            required: true
+          - name: "type"
+            type: "string"
+            description: "Filesystem type, e.g. -t ext4 or -t vfat (leave blank for auto-detect)"
+            required: false
+          - name: "options"
+            type: "string"
+            description: "Mount options, e.g. -o ro,noexec (leave blank to skip)"
+            required: false
+
+      - name: "unmount"
+        description: "Unmount a mounted filesystem"
+        template: "umount{{lazy}} {{target}}"
+        tags: ["unmount", "umount", "detach filesystem"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "Mount point or device to unmount"
+            required: true
+            sub_command: "findmnt --real -n -o TARGET 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "lazy"
+            type: "flag"
+            description: "Lazy unmount — detach now, clean up when idle (-l)"
+            required: false
+            default: " -l"
+
+      - name: "remount-readonly"
+        description: "Remount a filesystem as read-only"
+        template: "mount -o remount,ro {{target}}"
+        tags: ["remount read-only", "read only filesystem", "ro remount"]
+        inputs:
+          - name: "target"
+            type: "string"
+            description: "Mount point to remount as read-only"
+            required: true
+            sub_command: "findmnt --real -n -o TARGET 2>/dev/null | awk '{print $1\",\"$1}'"
+
+  - name: "io"
+    description: "Monitor disk I/O statistics"
+    options:
+      - name: "io-stats"
+        description: "Show disk I/O statistics using iostat"
+        template: "iostat{{extended}}{{human}} {{interval}} {{count}}"
+        tags: ["iostat", "disk io", "io statistics", "read write speed"]
+        inputs:
+          - name: "interval"
+            type: "string"
+            description: "Refresh interval in seconds"
+            required: false
+            default: "2"
+          - name: "count"
+            type: "string"
+            description: "Number of reports to produce (leave blank to run indefinitely)"
+            required: false
+          - name: "extended"
+            type: "flag"
+            description: "Extended statistics (-x)"
+            required: false
+            default: " -x"
+          - name: "human"
+            type: "flag"
+            description: "Human-readable throughput (-h)"
+            required: false
+            default: " -h"
+
+      - name: "io-per-process"
+        description: "Show per-process I/O usage using iotop"
+        template: "iotop{{only}}{{accumulated}}{{batch}}"
+        tags: ["iotop", "process io", "per process io", "disk hog process"]
+        inputs:
+          - name: "only"
+            type: "flag"
+            description: "Show only processes doing I/O (-o)"
+            required: false
+            default: " -o"
+          - name: "accumulated"
+            type: "flag"
+            description: "Show accumulated I/O rather than bandwidth (-a)"
+            required: false
+            default: " -a"
+          - name: "batch"
+            type: "flag"
+            description: "Non-interactive batch mode (-b, useful for logging)"
+            required: false
+            default: " -b"

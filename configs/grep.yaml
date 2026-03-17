@@ -1,0 +1,341 @@
+name: "grep"
+description: "Pattern search in files and streams: search, context, output, extended"
+version: "1.0.0"
+commands:
+  - name: "search"
+    description: "Search for patterns in files and streams"
+    options:
+      - name: "search-file"
+        description: "Search for a pattern in a file"
+        template: "grep{{ignore_case}}{{word}} '{{pattern}}' {{file}}"
+        tags: ["grep file", "search file", "find pattern"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search, e.g. app.log or *.txt"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive search (-i)"
+            required: false
+            default: " -i"
+          - name: "word"
+            type: "flag"
+            description: "Match whole words only (-w)"
+            required: false
+            default: " -w"
+
+      - name: "search-recursive"
+        description: "Recursively search for a pattern in a directory"
+        template: "grep -r{{ignore_case}}{{word}}{{include}} '{{pattern}}' {{path}}"
+        tags: ["recursive grep", "search directory", "grep -r"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "path"
+            type: "string"
+            description: "Directory to search in"
+            required: true
+            default: "."
+          - name: "include"
+            type: "string"
+            description: "Limit to files matching a glob, e.g. --include='*.py' (leave blank for all files)"
+            required: false
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive search (-i)"
+            required: false
+            default: " -i"
+          - name: "word"
+            type: "flag"
+            description: "Match whole words only (-w)"
+            required: false
+            default: " -w"
+
+      - name: "search-case-insensitive"
+        description: "Search for a pattern ignoring case"
+        template: "grep -i{{word}} '{{pattern}}' {{file}}"
+        tags: ["case insensitive", "grep -i", "ignore case"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "word"
+            type: "flag"
+            description: "Match whole words only (-w)"
+            required: false
+            default: " -w"
+
+      - name: "search-word"
+        description: "Search for whole-word matches only"
+        template: "grep -w{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["whole word", "word boundary", "grep -w"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Word to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive search (-i)"
+            required: false
+            default: " -i"
+
+      - name: "invert-match"
+        description: "Print lines that do NOT match the pattern"
+        template: "grep -v{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["invert match", "exclude pattern", "grep -v"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to exclude"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+
+      - name: "count-matches"
+        description: "Count the number of matching lines per file"
+        template: "grep -c{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["count matches", "match count", "grep -c"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to count"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+
+  - name: "context"
+    description: "Show surrounding lines around matches"
+    options:
+      - name: "before-context"
+        description: "Show N lines before each match"
+        template: "grep -B {{lines}}{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["before context", "grep -B", "lines before"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "lines"
+            type: "string"
+            description: "Number of lines of context before the match"
+            required: true
+            default: "3"
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+
+      - name: "after-context"
+        description: "Show N lines after each match"
+        template: "grep -A {{lines}}{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["after context", "grep -A", "lines after"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "lines"
+            type: "string"
+            description: "Number of lines of context after the match"
+            required: true
+            default: "3"
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+
+      - name: "surrounding-context"
+        description: "Show N lines before and after each match"
+        template: "grep -C {{lines}}{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["surrounding context", "grep -C", "lines around"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "lines"
+            type: "string"
+            description: "Number of lines of context on each side"
+            required: true
+            default: "3"
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+
+  - name: "output"
+    description: "Control what grep outputs"
+    options:
+      - name: "filenames-only"
+        description: "Print only the names of files containing matches"
+        template: "grep -rl{{ignore_case}} '{{pattern}}' {{path}}"
+        tags: ["files with matches", "grep -l", "matching files"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "path"
+            type: "string"
+            description: "Directory or file(s) to search"
+            required: true
+            default: "."
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: "i"
+
+      - name: "line-numbers"
+        description: "Show line numbers alongside matches"
+        template: "grep -n{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["line numbers", "grep -n", "show line number"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+
+      - name: "with-color"
+        description: "Force color-highlighted output"
+        template: "grep --color=always{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["colored output", "highlight matches", "grep color"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Pattern to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+
+  - name: "extended"
+    description: "Use advanced regex engines"
+    options:
+      - name: "extended-regex"
+        description: "Search using extended regular expressions (ERE)"
+        template: "grep -E{{ignore_case}}{{word}} '{{pattern}}' {{file}}"
+        tags: ["extended regex", "ERE", "grep -E", "egrep"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Extended regex pattern, e.g. 'error|warn' or '[0-9]{3}'"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+          - name: "word"
+            type: "flag"
+            description: "Match whole words only (-w)"
+            required: false
+            default: " -w"
+
+      - name: "fixed-string"
+        description: "Search for a fixed string (no regex interpretation)"
+        template: "grep -F{{ignore_case}}{{word}} '{{pattern}}' {{file}}"
+        tags: ["fixed string", "literal search", "grep -F", "fgrep"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Literal string to search for"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"
+          - name: "word"
+            type: "flag"
+            description: "Match whole words only (-w)"
+            required: false
+            default: " -w"
+
+      - name: "perl-regex"
+        description: "Search using Perl-compatible regular expressions (PCRE)"
+        template: "grep -P{{ignore_case}} '{{pattern}}' {{file}}"
+        tags: ["perl regex", "PCRE", "grep -P", "lookahead", "lookbehind"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "PCRE pattern, e.g. '(?<=prefix)\\w+'"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "File(s) to search"
+            required: true
+          - name: "ignore_case"
+            type: "flag"
+            description: "Case-insensitive (-i)"
+            required: false
+            default: " -i"

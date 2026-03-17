@@ -1,0 +1,421 @@
+name: "helm"
+description: "Kubernetes package manager: repo, chart, release, inspect"
+version: "1.0.0"
+commands:
+  - name: "repo"
+    description: "Manage Helm chart repositories"
+    options:
+      - name: "list"
+        description: "List configured chart repositories"
+        template: "helm repo list"
+        tags: ["list repos", "show repos", "helm repos"]
+
+      - name: "add"
+        description: "Add a chart repository"
+        template: "helm repo add{{username}}{{password}}{{force_update}} {{name}} {{url}}"
+        tags: ["add repo", "helm repo add", "register repository"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Local alias for the repository"
+            required: true
+          - name: "url"
+            type: "string"
+            description: "Repository URL, e.g. https://charts.bitnami.com/bitnami"
+            required: true
+          - name: "username"
+            type: "string"
+            description: "Repository username, e.g. --username admin (leave blank to skip)"
+            required: false
+          - name: "password"
+            type: "string"
+            description: "Repository password, e.g. --password secret (leave blank to skip)"
+            required: false
+          - name: "force_update"
+            type: "flag"
+            description: "Replace an existing repo with the same name (--force-update)"
+            required: false
+            default: " --force-update"
+
+      - name: "update"
+        description: "Update information about available charts from configured repos"
+        template: "helm repo update{{repo}}"
+        tags: ["update repos", "fetch chart index", "helm repo update"]
+        inputs:
+          - name: "repo"
+            type: "string"
+            description: "Update a specific repo by name (leave blank to update all)"
+            required: false
+            sub_command: "helm repo list 2>/dev/null | tail -n +2 | awk '{print $1\",\"$1\" (\"$2\")\"}'"
+
+      - name: "remove"
+        description: "Remove a configured chart repository"
+        template: "helm repo remove {{name}}"
+        tags: ["remove repo", "delete repo", "helm repo remove"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Repository name to remove"
+            required: true
+            sub_command: "helm repo list 2>/dev/null | tail -n +2 | awk '{print $1\",\"$1\" (\"$2\")\"}'"
+
+  - name: "chart"
+    description: "Search, inspect, and download charts"
+    options:
+      - name: "search"
+        description: "Search for charts in configured repos"
+        template: "helm search repo{{versions}} {{keyword}}"
+        tags: ["search charts", "find chart", "helm search"]
+        inputs:
+          - name: "keyword"
+            type: "string"
+            description: "Search keyword, e.g. nginx or postgres"
+            required: true
+          - name: "versions"
+            type: "flag"
+            description: "Show all available versions (--versions)"
+            required: false
+            default: " --versions"
+
+      - name: "inspect"
+        description: "Inspect a chart's README, values, or full metadata"
+        template: "helm show {{section}} {{chart}}{{version}}"
+        tags: ["inspect chart", "helm show", "chart details"]
+        inputs:
+          - name: "chart"
+            type: "string"
+            description: "Chart reference, e.g. bitnami/nginx or ./my-chart"
+            required: true
+          - name: "section"
+            type: "string"
+            description: "Section to show: all, readme, values, chart"
+            required: true
+            default: "all"
+          - name: "version"
+            type: "string"
+            description: "Chart version, e.g. --version 1.2.3 (leave blank for latest)"
+            required: false
+
+      - name: "pull"
+        description: "Download a chart archive to the current directory"
+        template: "helm pull{{untar}}{{version}} {{chart}}"
+        tags: ["download chart", "helm pull", "fetch chart"]
+        inputs:
+          - name: "chart"
+            type: "string"
+            description: "Chart reference, e.g. bitnami/nginx"
+            required: true
+          - name: "version"
+            type: "string"
+            description: "Chart version, e.g. --version 1.2.3 (leave blank for latest)"
+            required: false
+          - name: "untar"
+            type: "flag"
+            description: "Unpack the chart after download (--untar)"
+            required: false
+            default: " --untar"
+
+  - name: "release"
+    description: "Install, upgrade, rollback, and manage releases"
+    options:
+      - name: "list"
+        description: "List deployed releases"
+        template: "helm list{{all_namespaces}}{{namespace}}{{all}}{{output}}"
+        tags: ["list releases", "deployed charts", "helm list"]
+        inputs:
+          - name: "all_namespaces"
+            type: "flag"
+            description: "List across all namespaces (-A)"
+            required: false
+            default: " -A"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace to list, e.g. -n production (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "all"
+            type: "flag"
+            description: "List releases in all states including failed (--all)"
+            required: false
+            default: " --all"
+          - name: "output"
+            type: "string"
+            description: "Output format, e.g. -o json or -o yaml (leave blank for table)"
+            required: false
+
+      - name: "install"
+        description: "Install a chart as a new release"
+        template: "helm install{{namespace}}{{create_namespace}}{{values}}{{set}}{{version}}{{wait}}{{dry_run}} {{release_name}} {{chart}}"
+        tags: ["helm install", "deploy chart", "new release"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name (or use --generate-name)"
+            required: true
+          - name: "chart"
+            type: "string"
+            description: "Chart reference, e.g. bitnami/nginx or ./my-chart"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Target namespace, e.g. -n production (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "create_namespace"
+            type: "flag"
+            description: "Create the namespace if it doesn't exist (--create-namespace)"
+            required: false
+            default: " --create-namespace"
+          - name: "values"
+            type: "string"
+            description: "Values file, e.g. -f values.yaml (leave blank to skip)"
+            required: false
+          - name: "set"
+            type: "string"
+            description: "Override a value, e.g. --set image.tag=1.2 (leave blank to skip)"
+            required: false
+          - name: "version"
+            type: "string"
+            description: "Chart version, e.g. --version 1.2.3 (leave blank for latest)"
+            required: false
+          - name: "wait"
+            type: "flag"
+            description: "Wait until all resources are ready (--wait)"
+            required: false
+            default: " --wait"
+          - name: "dry_run"
+            type: "flag"
+            description: "Preview what would be installed (--dry-run)"
+            required: false
+            default: " --dry-run"
+
+      - name: "upgrade"
+        description: "Upgrade an existing release"
+        template: "helm upgrade{{install}}{{namespace}}{{values}}{{set}}{{version}}{{reset_values}}{{wait}}{{dry_run}} {{release_name}} {{chart}}"
+        tags: ["helm upgrade", "update release", "redeploy chart"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name to upgrade"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "chart"
+            type: "string"
+            description: "Chart reference"
+            required: true
+          - name: "install"
+            type: "flag"
+            description: "Install if the release doesn't exist yet (-i)"
+            required: false
+            default: " -i"
+          - name: "namespace"
+            type: "string"
+            description: "Target namespace (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "values"
+            type: "string"
+            description: "Values file, e.g. -f values.yaml (leave blank to skip)"
+            required: false
+          - name: "set"
+            type: "string"
+            description: "Override a value (leave blank to skip)"
+            required: false
+          - name: "version"
+            type: "string"
+            description: "Chart version (leave blank for latest)"
+            required: false
+          - name: "reset_values"
+            type: "flag"
+            description: "Reset values to chart defaults (--reset-values)"
+            required: false
+            default: " --reset-values"
+          - name: "wait"
+            type: "flag"
+            description: "Wait until all resources are ready (--wait)"
+            required: false
+            default: " --wait"
+          - name: "dry_run"
+            type: "flag"
+            description: "Preview the upgrade (--dry-run)"
+            required: false
+            default: " --dry-run"
+
+      - name: "rollback"
+        description: "Roll back a release to a previous revision"
+        template: "helm rollback{{wait}}{{namespace}} {{release_name}} {{revision}}"
+        tags: ["helm rollback", "undo release", "previous version"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "revision"
+            type: "string"
+            description: "Revision number to roll back to (leave blank for previous)"
+            required: false
+          - name: "namespace"
+            type: "string"
+            description: "Namespace, e.g. -n production (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "wait"
+            type: "flag"
+            description: "Wait until rollback completes (--wait)"
+            required: false
+            default: " --wait"
+
+      - name: "uninstall"
+        description: "Uninstall a release and remove all associated resources"
+        template: "helm uninstall{{namespace}}{{keep_history}}{{dry_run}} {{release_name}}"
+        tags: ["helm uninstall", "delete release", "remove chart"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name to uninstall"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace, e.g. -n production (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "keep_history"
+            type: "flag"
+            description: "Keep release history (--keep-history)"
+            required: false
+            default: " --keep-history"
+          - name: "dry_run"
+            type: "flag"
+            description: "Preview uninstall (--dry-run)"
+            required: false
+            default: " --dry-run"
+
+      - name: "status"
+        description: "Display the status of a named release"
+        template: "helm status{{namespace}}{{revision}}{{output}} {{release_name}}"
+        tags: ["release status", "helm status", "deployment status"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "revision"
+            type: "string"
+            description: "Specific revision, e.g. --revision 3 (leave blank for current)"
+            required: false
+          - name: "output"
+            type: "string"
+            description: "Output format, e.g. -o json (leave blank for default)"
+            required: false
+
+      - name: "history"
+        description: "Show the revision history of a release"
+        template: "helm history{{namespace}}{{max}}{{output}} {{release_name}}"
+        tags: ["release history", "helm history", "revision history"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "max"
+            type: "string"
+            description: "Maximum number of revisions to show, e.g. --max 10 (leave blank for all)"
+            required: false
+          - name: "output"
+            type: "string"
+            description: "Output format, e.g. -o json (leave blank for table)"
+            required: false
+
+  - name: "inspect"
+    description: "Inspect deployed release manifests and values"
+    options:
+      - name: "get-values"
+        description: "Get the computed values for a release"
+        template: "helm get values{{namespace}}{{all}}{{output}} {{release_name}}"
+        tags: ["get values", "release values", "helm get values"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "all"
+            type: "flag"
+            description: "Show all values including chart defaults (-a)"
+            required: false
+            default: " -a"
+          - name: "output"
+            type: "string"
+            description: "Output format, e.g. -o json (leave blank for YAML)"
+            required: false
+
+      - name: "get-manifest"
+        description: "Get the Kubernetes manifest for a release"
+        template: "helm get manifest{{namespace}}{{revision}} {{release_name}}"
+        tags: ["get manifest", "rendered templates", "helm get manifest"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "revision"
+            type: "string"
+            description: "Specific revision (leave blank for latest)"
+            required: false
+
+      - name: "diff"
+        description: "Preview changes between the current release and a new chart/values (requires helm-diff plugin)"
+        template: "helm diff upgrade{{namespace}}{{values}}{{set}}{{version}} {{release_name}} {{chart}}"
+        tags: ["diff release", "preview upgrade", "helm diff"]
+        inputs:
+          - name: "release_name"
+            type: "string"
+            description: "Release name"
+            required: true
+            sub_command: "helm list --all-namespaces --short 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "chart"
+            type: "string"
+            description: "Chart reference to diff against"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace (leave blank for current)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "values"
+            type: "string"
+            description: "Values file (leave blank to skip)"
+            required: false
+          - name: "set"
+            type: "string"
+            description: "Override a value (leave blank to skip)"
+            required: false
+          - name: "version"
+            type: "string"
+            description: "Chart version (leave blank for latest)"
+            required: false

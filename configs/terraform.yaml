@@ -1,0 +1,311 @@
+name: "terraform"
+description: "Infrastructure as Code with Terraform: workspace, core, state, inspect"
+version: "1.0.0"
+commands:
+  - name: "workspace"
+    description: "Manage Terraform workspaces"
+    options:
+      - name: "list"
+        description: "List all workspaces"
+        template: "terraform workspace list"
+        tags: ["list workspaces", "show workspaces"]
+
+      - name: "new"
+        description: "Create a new workspace"
+        template: "terraform workspace new {{name}}"
+        tags: ["create workspace", "new workspace"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Workspace name"
+            required: true
+
+      - name: "select"
+        description: "Switch to an existing workspace"
+        template: "terraform workspace select {{name}}"
+        tags: ["switch workspace", "use workspace"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Workspace name to select"
+            required: true
+            sub_command: "terraform workspace list 2>/dev/null | awk '{gsub(/^\\* /,\"\"); print $1\",\"$1}'"
+
+      - name: "delete"
+        description: "Delete a workspace"
+        template: "terraform workspace delete{{force}} {{name}}"
+        tags: ["delete workspace", "remove workspace"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Workspace name to delete"
+            required: true
+            sub_command: "terraform workspace list 2>/dev/null | awk '{gsub(/^\\* /,\"\"); print $1\",\"$1}'"
+          - name: "force"
+            type: "flag"
+            description: "Force deletion even if the workspace has resources (-force)"
+            required: false
+            default: " -force"
+
+  - name: "core"
+    description: "Core Terraform workflow commands"
+    options:
+      - name: "init"
+        description: "Initialize a Terraform working directory"
+        template: "terraform init{{upgrade}}{{backend}}{{reconfigure}}"
+        tags: ["terraform init", "initialize", "download providers"]
+        inputs:
+          - name: "upgrade"
+            type: "flag"
+            description: "Upgrade providers and modules to the latest allowed version (-upgrade)"
+            required: false
+            default: " -upgrade"
+          - name: "backend"
+            type: "string"
+            description: "Override a backend config value, e.g. -backend-config='bucket=my-state' (leave blank to skip)"
+            required: false
+          - name: "reconfigure"
+            type: "flag"
+            description: "Reconfigure the backend, ignoring any saved configuration (-reconfigure)"
+            required: false
+            default: " -reconfigure"
+
+      - name: "validate"
+        description: "Validate the Terraform configuration files"
+        template: "terraform validate{{json}}"
+        tags: ["validate config", "syntax check", "terraform validate"]
+        inputs:
+          - name: "json"
+            type: "flag"
+            description: "Output validation result as JSON (-json)"
+            required: false
+            default: " -json"
+
+      - name: "plan"
+        description: "Generate and review an execution plan"
+        template: "terraform plan{{out}}{{var_file}}{{var}}{{target}}{{destroy}}"
+        tags: ["terraform plan", "preview changes", "dry run"]
+        inputs:
+          - name: "out"
+            type: "string"
+            description: "Save plan to a file, e.g. -out=tfplan (leave blank to skip)"
+            required: false
+          - name: "var_file"
+            type: "string"
+            description: "Variable file, e.g. -var-file=prod.tfvars (leave blank to skip)"
+            required: false
+          - name: "var"
+            type: "string"
+            description: "Override a variable, e.g. -var='region=us-east-1' (leave blank to skip)"
+            required: false
+          - name: "target"
+            type: "string"
+            description: "Limit to a specific resource, e.g. -target=aws_instance.web (leave blank for all)"
+            required: false
+          - name: "destroy"
+            type: "flag"
+            description: "Plan a destroy operation (-destroy)"
+            required: false
+            default: " -destroy"
+
+      - name: "apply"
+        description: "Apply the changes required to reach the desired state"
+        template: "terraform apply{{auto_approve}}{{var_file}}{{var}}{{target}}{{plan_file}}"
+        tags: ["terraform apply", "deploy infrastructure", "apply changes"]
+        inputs:
+          - name: "plan_file"
+            type: "string"
+            description: "Saved plan file to apply, e.g. tfplan (leave blank to plan interactively)"
+            required: false
+          - name: "auto_approve"
+            type: "flag"
+            description: "Skip interactive approval (-auto-approve)"
+            required: false
+            default: " -auto-approve"
+          - name: "var_file"
+            type: "string"
+            description: "Variable file, e.g. -var-file=prod.tfvars (leave blank to skip)"
+            required: false
+          - name: "var"
+            type: "string"
+            description: "Override a variable, e.g. -var='region=us-east-1' (leave blank to skip)"
+            required: false
+          - name: "target"
+            type: "string"
+            description: "Limit to a specific resource (leave blank for all)"
+            required: false
+
+      - name: "destroy"
+        description: "Destroy all managed infrastructure"
+        template: "terraform destroy{{auto_approve}}{{var_file}}{{var}}{{target}}"
+        tags: ["terraform destroy", "tear down", "delete infrastructure"]
+        inputs:
+          - name: "auto_approve"
+            type: "flag"
+            description: "Skip interactive approval (-auto-approve)"
+            required: false
+            default: " -auto-approve"
+          - name: "var_file"
+            type: "string"
+            description: "Variable file (leave blank to skip)"
+            required: false
+          - name: "var"
+            type: "string"
+            description: "Override a variable (leave blank to skip)"
+            required: false
+          - name: "target"
+            type: "string"
+            description: "Limit to a specific resource (leave blank for all)"
+            required: false
+
+      - name: "refresh"
+        description: "Update the state file to match real infrastructure"
+        template: "terraform refresh{{var_file}}{{var}}{{target}}"
+        tags: ["terraform refresh", "sync state", "update state"]
+        inputs:
+          - name: "var_file"
+            type: "string"
+            description: "Variable file (leave blank to skip)"
+            required: false
+          - name: "var"
+            type: "string"
+            description: "Override a variable (leave blank to skip)"
+            required: false
+          - name: "target"
+            type: "string"
+            description: "Limit to a specific resource (leave blank for all)"
+            required: false
+
+  - name: "state"
+    description: "Manage the Terraform state"
+    options:
+      - name: "list"
+        description: "List resources tracked in the state"
+        template: "terraform state list{{address}}"
+        tags: ["list state", "state resources", "terraform state list"]
+        inputs:
+          - name: "address"
+            type: "string"
+            description: "Filter by resource address pattern (leave blank for all)"
+            required: false
+
+      - name: "show"
+        description: "Show attributes of a resource in the state"
+        template: "terraform state show {{address}}"
+        tags: ["inspect resource", "state show", "resource attributes"]
+        inputs:
+          - name: "address"
+            type: "string"
+            description: "Resource address, e.g. aws_instance.web"
+            required: true
+            sub_command: "terraform state list 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "move"
+        description: "Move an item in the state to a new address"
+        template: "terraform state mv {{source}} {{destination}}"
+        tags: ["rename resource", "state mv", "refactor resource"]
+        inputs:
+          - name: "source"
+            type: "string"
+            description: "Current resource address"
+            required: true
+            sub_command: "terraform state list 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "destination"
+            type: "string"
+            description: "New resource address"
+            required: true
+
+      - name: "remove"
+        description: "Remove an item from the state (does not destroy the resource)"
+        template: "terraform state rm {{address}}"
+        tags: ["remove from state", "state rm", "deregister resource"]
+        inputs:
+          - name: "address"
+            type: "string"
+            description: "Resource address to remove"
+            required: true
+            sub_command: "terraform state list 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "pull"
+        description: "Download and output the current state file"
+        template: "terraform state pull"
+        tags: ["download state", "pull state", "remote state"]
+
+      - name: "push"
+        description: "Upload a local state file to the configured backend"
+        template: "terraform state push{{force}} {{file}}"
+        tags: ["upload state", "push state", "restore state"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Local state file path, e.g. terraform.tfstate"
+            required: true
+          - name: "force"
+            type: "flag"
+            description: "Override remote state serial protection (-force)"
+            required: false
+            default: " -force"
+
+  - name: "inspect"
+    description: "Inspect configuration, outputs, and the dependency graph"
+    options:
+      - name: "output"
+        description: "Show output values from the root module"
+        template: "terraform output{{json}}{{raw}}{{name}}"
+        tags: ["terraform output", "show outputs", "read outputs"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Specific output name (leave blank for all outputs)"
+            required: false
+          - name: "json"
+            type: "flag"
+            description: "Format output as JSON (-json)"
+            required: false
+            default: " -json"
+          - name: "raw"
+            type: "flag"
+            description: "Print the raw string value without quotes (-raw)"
+            required: false
+            default: " -raw"
+
+      - name: "show"
+        description: "Show the current state or a saved plan"
+        template: "terraform show{{json}}{{plan_file}}"
+        tags: ["show plan", "show state", "terraform show"]
+        inputs:
+          - name: "plan_file"
+            type: "string"
+            description: "Saved plan file to show (leave blank for current state)"
+            required: false
+          - name: "json"
+            type: "flag"
+            description: "Format output as JSON (-json)"
+            required: false
+            default: " -json"
+
+      - name: "graph"
+        description: "Generate a DOT-format dependency graph"
+        template: "terraform graph{{type}} | dot -Tsvg > {{output}}"
+        tags: ["dependency graph", "terraform graph", "visualize"]
+        inputs:
+          - name: "output"
+            type: "string"
+            description: "Output SVG file path"
+            required: true
+            default: "graph.svg"
+          - name: "type"
+            type: "string"
+            description: "Graph type: -type=plan, -type=apply, -type=destroy (leave blank for default)"
+            required: false
+
+      - name: "providers"
+        description: "Show the providers required for the current configuration"
+        template: "terraform providers{{lock}}"
+        tags: ["list providers", "terraform providers", "required providers"]
+        inputs:
+          - name: "lock"
+            type: "flag"
+            description: "Show provider lock file information (lock)"
+            required: false
+            default: " lock"

@@ -1,0 +1,72 @@
+name: "crontab"
+description: "Scheduled task management: manage user crontabs, system crons, validate expressions"
+version: "1.0.0"
+commands:
+  - name: "manage"
+    description: "Manage user crontab entries"
+    options:
+      - name: "list"
+        description: "Display the current user's crontab"
+        template: "crontab -l{{user}}"
+        tags: ["list crontab", "show cron jobs", "crontab -l"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Show crontab for a specific user, e.g. -u www-data (leave blank for current user)"
+            required: false
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (uid: \"$3\")\"}' /etc/passwd 2>/dev/null"
+
+      - name: "edit"
+        description: "Open the crontab editor for the current user"
+        template: "crontab -e{{user}}"
+        tags: ["edit crontab", "add cron job", "crontab -e"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Edit crontab for a specific user, e.g. -u deploy (leave blank for current user)"
+            required: false
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (uid: \"$3\")\"}' /etc/passwd 2>/dev/null"
+
+      - name: "remove-all"
+        description: "Remove all crontab entries for the current user"
+        template: "crontab -r{{user}}"
+        tags: ["remove crontab", "clear cron jobs", "crontab -r"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Remove crontab for a specific user, e.g. -u alice (leave blank for current user)"
+            required: false
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (uid: \"$3\")\"}' /etc/passwd 2>/dev/null"
+
+      - name: "install-from-file"
+        description: "Load and replace the crontab from a file"
+        template: "crontab{{user}} {{file}}"
+        tags: ["install crontab", "load crontab file", "crontab from file"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Path to the crontab file"
+            required: true
+          - name: "user"
+            type: "string"
+            description: "Install for a specific user, e.g. -u alice (leave blank for current user)"
+            required: false
+            sub_command: "awk -F: '$3 >= 1000 {print $1\",\"$1\" (uid: \"$3\")\"}' /etc/passwd 2>/dev/null"
+
+  - name: "system"
+    description: "Inspect system-wide cron files"
+    options:
+      - name: "list-system-crons"
+        description: "Show all system cron jobs from /etc/cron* directories and /etc/crontab"
+        template: "cat /etc/crontab; echo ''; for f in /etc/cron.d/*; do echo \"=== $f ===\"; cat \"$f\"; echo ''; done"
+        tags: ["system cron", "list system crontab", "/etc/cron.d"]
+
+      - name: "validate-expression"
+        description: "Validate a cron expression using a simple echo preview"
+        template: "echo '{{expression}}' | awk 'NF==5{print \"Valid: \"$0} NF!=5{print \"Invalid: expected 5 fields, got \"NF}'"
+        tags: ["validate cron", "check cron expression", "cron syntax"]
+        inputs:
+          - name: "expression"
+            type: "string"
+            description: "Cron expression with 5 fields, e.g. '*/5 * * * *' or '0 2 * * 1'"
+            required: true

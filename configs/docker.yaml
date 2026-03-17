@@ -1,0 +1,655 @@
+name: "docker"
+description: "Docker container and image management: containers, images, volumes, networks, system"
+version: "1.0.0"
+commands:
+  - name: "containers"
+    description: "Create, inspect, and manage containers"
+    options:
+      - name: "list"
+        description: "List running containers"
+        template: "docker ps{{format}}"
+        tags: ["running containers", "ps", "list containers"]
+        inputs:
+          - name: "format"
+            type: "string"
+            description: "Custom format flag, e.g. --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}' (leave blank for default)"
+            required: false
+
+      - name: "list-all"
+        description: "List all containers including stopped ones"
+        template: "docker ps -a{{format}}"
+        tags: ["all containers", "stopped containers", "list all"]
+        inputs:
+          - name: "format"
+            type: "string"
+            description: "Custom format flag, e.g. --format 'table {{.Names}}\\t{{.Status}}' (leave blank for default)"
+            required: false
+
+      - name: "run"
+        description: "Run a container from an image"
+        template: "docker run{{detach}}{{remove}}{{name}}{{port}}{{volume}}{{env}} {{image}}{{command}}"
+        tags: ["create container", "start container", "docker run"]
+        inputs:
+          - name: "image"
+            type: "string"
+            description: "Image name and optional tag, e.g. nginx:latest"
+            required: true
+            sub_command: "docker images --format '{{.Repository}}:{{.Tag}},{{.Repository}}:{{.Tag}} ({{.Size}})' 2>/dev/null"
+          - name: "detach"
+            type: "flag"
+            description: "Run container in background (-d)"
+            required: false
+            default: " -d"
+          - name: "remove"
+            type: "flag"
+            description: "Automatically remove container when it exits (--rm)"
+            required: false
+            default: " --rm"
+          - name: "name"
+            type: "string"
+            description: "Assign a name to the container, e.g. --name my-app (leave blank to skip)"
+            required: false
+          - name: "port"
+            type: "string"
+            description: "Publish port mapping, e.g. -p 8080:80 (leave blank to skip)"
+            required: false
+          - name: "volume"
+            type: "string"
+            description: "Bind mount a volume, e.g. -v /host/path:/container/path (leave blank to skip)"
+            required: false
+          - name: "env"
+            type: "string"
+            description: "Set an environment variable, e.g. -e MY_VAR=value (leave blank to skip)"
+            required: false
+          - name: "command"
+            type: "string"
+            description: "Override the default container command (leave blank to use image default)"
+            required: false
+
+      - name: "run-interactive"
+        description: "Run a container interactively with a shell"
+        template: "docker run -it{{remove}}{{name}}{{port}}{{volume}}{{env}} {{image}} {{shell}}"
+        tags: ["interactive container", "shell into container", "run bash"]
+        inputs:
+          - name: "image"
+            type: "string"
+            description: "Image name and optional tag, e.g. ubuntu:22.04"
+            required: true
+            sub_command: "docker images --format '{{.Repository}}:{{.Tag}},{{.Repository}}:{{.Tag}} ({{.Size}})' 2>/dev/null"
+          - name: "shell"
+            type: "string"
+            description: "Shell to launch"
+            required: true
+            default: "/bin/bash"
+          - name: "remove"
+            type: "flag"
+            description: "Automatically remove container when it exits (--rm)"
+            required: false
+            default: " --rm"
+          - name: "name"
+            type: "string"
+            description: "Assign a name to the container, e.g. --name my-shell (leave blank to skip)"
+            required: false
+          - name: "port"
+            type: "string"
+            description: "Publish port mapping, e.g. -p 8080:80 (leave blank to skip)"
+            required: false
+          - name: "volume"
+            type: "string"
+            description: "Bind mount, e.g. -v $(pwd):/workspace (leave blank to skip)"
+            required: false
+          - name: "env"
+            type: "string"
+            description: "Environment variable, e.g. -e DEBUG=1 (leave blank to skip)"
+            required: false
+
+      - name: "exec"
+        description: "Execute a command inside a running container"
+        template: "docker exec{{interactive}} {{container}} {{command}}"
+        tags: ["shell into container", "exec", "run in container"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "command"
+            type: "string"
+            description: "Command to run inside the container"
+            required: true
+            default: "/bin/bash"
+          - name: "interactive"
+            type: "flag"
+            description: "Interactive TTY mode (-it)"
+            required: false
+            default: " -it"
+
+      - name: "logs"
+        description: "Fetch logs from a container"
+        template: "docker logs{{follow}}{{tail}}{{timestamps}} {{container}}"
+        tags: ["container logs", "stdout", "stderr"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps -a --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "follow"
+            type: "flag"
+            description: "Stream logs in real time (-f)"
+            required: false
+            default: " -f"
+          - name: "tail"
+            type: "string"
+            description: "Number of recent lines to show, e.g. --tail 100 (leave blank for all)"
+            required: false
+          - name: "timestamps"
+            type: "flag"
+            description: "Show timestamps (-t)"
+            required: false
+            default: " -t"
+
+      - name: "stop"
+        description: "Stop a running container"
+        template: "docker stop{{time}} {{container}}"
+        tags: ["halt container", "kill container", "shutdown container"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "time"
+            type: "string"
+            description: "Seconds to wait before killing, e.g. -t 30 (leave blank for default 10s)"
+            required: false
+
+      - name: "start"
+        description: "Start a stopped container"
+        template: "docker start{{attach}} {{container}}"
+        tags: ["restart container", "resume container"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps -a --filter status=exited --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "attach"
+            type: "flag"
+            description: "Attach stdout/stderr and forward signals (-a)"
+            required: false
+            default: " -a"
+
+      - name: "restart"
+        description: "Restart a container"
+        template: "docker restart{{time}} {{container}}"
+        tags: ["bounce container", "reload container"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps -a --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "time"
+            type: "string"
+            description: "Seconds to wait before killing, e.g. -t 10 (leave blank for default)"
+            required: false
+
+      - name: "remove"
+        description: "Remove one or more containers"
+        template: "docker rm{{force}}{{volumes}} {{container}}"
+        tags: ["delete container", "rm container", "clean up container"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps -a --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "force"
+            type: "flag"
+            description: "Force remove a running container (-f)"
+            required: false
+            default: " -f"
+          - name: "volumes"
+            type: "flag"
+            description: "Remove anonymous volumes associated with the container (-v)"
+            required: false
+            default: " -v"
+
+      - name: "inspect"
+        description: "Display detailed information about a container"
+        template: "docker inspect{{format}} {{container}}"
+        tags: ["container details", "container config", "inspect"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps -a --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "format"
+            type: "string"
+            description: "Go template format flag, e.g. --format '{{.NetworkSettings.IPAddress}}' (leave blank for full JSON)"
+            required: false
+
+      - name: "stats"
+        description: "Display live resource usage statistics for containers"
+        template: "docker stats{{no_stream}}{{all}}{{format}}"
+        tags: ["cpu usage", "memory usage", "container metrics", "resource monitoring"]
+        inputs:
+          - name: "no_stream"
+            type: "flag"
+            description: "Report once instead of streaming (--no-stream)"
+            required: false
+            default: " --no-stream"
+          - name: "all"
+            type: "flag"
+            description: "Show all containers including stopped ones (-a)"
+            required: false
+            default: " -a"
+          - name: "format"
+            type: "string"
+            description: "Custom format flag, e.g. --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}' (leave blank for default)"
+            required: false
+
+      - name: "top"
+        description: "Display running processes inside a container"
+        template: "docker top {{container}}{{ps_options}}"
+        tags: ["container processes", "ps in container"]
+        inputs:
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "ps_options"
+            type: "string"
+            description: "Options passed to ps inside the container, e.g. aux (leave blank for default)"
+            required: false
+
+      - name: "copy"
+        description: "Copy files between a container and the local filesystem"
+        template: "docker cp {{source}} {{destination}}"
+        tags: ["copy files", "container cp", "extract files"]
+        inputs:
+          - name: "source"
+            type: "string"
+            description: "Source path — use container:path for container source, e.g. my-app:/app/log.txt"
+            required: true
+          - name: "destination"
+            type: "string"
+            description: "Destination path — use container:path for container destination, e.g. . for current directory"
+            required: true
+            default: "."
+
+  - name: "images"
+    description: "Pull, build, tag, push, and remove images"
+    options:
+      - name: "list"
+        description: "List locally available images"
+        template: "docker images{{all}}{{format}}"
+        tags: ["show images", "local images", "docker images"]
+        inputs:
+          - name: "all"
+            type: "flag"
+            description: "Show intermediate images (-a)"
+            required: false
+            default: " -a"
+          - name: "format"
+            type: "string"
+            description: "Custom format flag, e.g. --format 'table {{.Repository}}\\t{{.Tag}}\\t{{.Size}}' (leave blank for default)"
+            required: false
+
+      - name: "pull"
+        description: "Pull an image from a registry"
+        template: "docker pull{{all_tags}} {{image}}"
+        tags: ["download image", "fetch image", "registry pull"]
+        inputs:
+          - name: "image"
+            type: "string"
+            description: "Image name and optional tag, e.g. nginx:latest or ubuntu:22.04"
+            required: true
+          - name: "all_tags"
+            type: "flag"
+            description: "Download all tagged images in the repository (-a)"
+            required: false
+            default: " -a"
+
+      - name: "build"
+        description: "Build an image from a Dockerfile"
+        template: "docker build{{tag}}{{file}}{{no_cache}}{{build_arg}} {{context}}"
+        tags: ["build image", "dockerfile", "docker build"]
+        inputs:
+          - name: "context"
+            type: "string"
+            description: "Build context path (directory containing the Dockerfile)"
+            required: true
+            default: "."
+          - name: "tag"
+            type: "string"
+            description: "Image name and tag, e.g. -t my-app:1.0 (leave blank to skip)"
+            required: false
+          - name: "file"
+            type: "string"
+            description: "Path to Dockerfile, e.g. -f docker/Dockerfile (leave blank for ./Dockerfile)"
+            required: false
+          - name: "no_cache"
+            type: "flag"
+            description: "Do not use build cache (--no-cache)"
+            required: false
+            default: " --no-cache"
+          - name: "build_arg"
+            type: "string"
+            description: "Set a build-time variable, e.g. --build-arg VERSION=1.2 (leave blank to skip)"
+            required: false
+
+      - name: "tag"
+        description: "Tag a source image with a new name"
+        template: "docker tag {{source}} {{target}}"
+        tags: ["retag image", "alias image", "docker tag"]
+        inputs:
+          - name: "source"
+            type: "string"
+            description: "Source image name:tag"
+            required: true
+            sub_command: "docker images --format '{{.Repository}}:{{.Tag}},{{.Repository}}:{{.Tag}} ({{.Size}})' 2>/dev/null"
+          - name: "target"
+            type: "string"
+            description: "New image name:tag, e.g. myrepo/my-app:2.0"
+            required: true
+
+      - name: "push"
+        description: "Push an image to a registry"
+        template: "docker push{{all_tags}} {{image}}"
+        tags: ["upload image", "publish image", "registry push"]
+        inputs:
+          - name: "image"
+            type: "string"
+            description: "Image name and tag to push, e.g. myrepo/my-app:1.0"
+            required: true
+            sub_command: "docker images --format '{{.Repository}}:{{.Tag}},{{.Repository}}:{{.Tag}} ({{.Size}})' 2>/dev/null"
+          - name: "all_tags"
+            type: "flag"
+            description: "Push all tags of the image (-a)"
+            required: false
+            default: " -a"
+
+      - name: "remove"
+        description: "Remove one or more images"
+        template: "docker rmi{{force}}{{no_prune}} {{image}}"
+        tags: ["delete image", "rmi", "clean up image"]
+        inputs:
+          - name: "image"
+            type: "string"
+            description: "Image name:tag or ID"
+            required: true
+            sub_command: "docker images --format '{{.Repository}}:{{.Tag}},{{.Repository}}:{{.Tag}} ({{.Size}})' 2>/dev/null"
+          - name: "force"
+            type: "flag"
+            description: "Force removal (-f)"
+            required: false
+            default: " -f"
+          - name: "no_prune"
+            type: "flag"
+            description: "Do not delete untagged parents (--no-prune)"
+            required: false
+            default: " --no-prune"
+
+      - name: "inspect"
+        description: "Display detailed information about an image"
+        template: "docker inspect{{format}} {{image}}"
+        tags: ["image details", "image config", "inspect image"]
+        inputs:
+          - name: "image"
+            type: "string"
+            description: "Image name:tag or ID"
+            required: true
+            sub_command: "docker images --format '{{.Repository}}:{{.Tag}},{{.Repository}}:{{.Tag}} ({{.Size}})' 2>/dev/null"
+          - name: "format"
+            type: "string"
+            description: "Go template format flag, e.g. --format '{{.Config.Env}}' (leave blank for full JSON)"
+            required: false
+
+      - name: "prune"
+        description: "Remove unused (dangling) images"
+        template: "docker image prune{{all}}{{force}}"
+        tags: ["clean images", "remove dangling", "disk cleanup"]
+        inputs:
+          - name: "all"
+            type: "flag"
+            description: "Remove all unused images, not just dangling ones (-a)"
+            required: false
+            default: " -a"
+          - name: "force"
+            type: "flag"
+            description: "Do not prompt for confirmation (-f)"
+            required: false
+            default: " -f"
+
+  - name: "volumes"
+    description: "Create, inspect, and remove Docker volumes"
+    options:
+      - name: "list"
+        description: "List all volumes"
+        template: "docker volume ls{{format}}"
+        tags: ["show volumes", "list volumes", "docker volumes"]
+        inputs:
+          - name: "format"
+            type: "string"
+            description: "Custom format flag, e.g. --format 'table {{.Name}}\\t{{.Driver}}' (leave blank for default)"
+            required: false
+
+      - name: "create"
+        description: "Create a named volume"
+        template: "docker volume create{{driver}}{{opt}} {{name}}"
+        tags: ["new volume", "make volume"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Volume name"
+            required: true
+          - name: "driver"
+            type: "string"
+            description: "Volume driver, e.g. --driver local (leave blank for default)"
+            required: false
+          - name: "opt"
+            type: "string"
+            description: "Driver-specific option, e.g. --opt type=tmpfs (leave blank to skip)"
+            required: false
+
+      - name: "inspect"
+        description: "Display detailed information about a volume"
+        template: "docker volume inspect{{format}} {{volume}}"
+        tags: ["volume details", "inspect volume"]
+        inputs:
+          - name: "volume"
+            type: "string"
+            description: "Volume name"
+            required: true
+            sub_command: "docker volume ls --format '{{.Name}},{{.Name}} ({{.Driver}})' 2>/dev/null"
+          - name: "format"
+            type: "string"
+            description: "Go template format flag (leave blank for full JSON)"
+            required: false
+
+      - name: "remove"
+        description: "Remove one or more volumes"
+        template: "docker volume rm{{force}} {{volume}}"
+        tags: ["delete volume", "rm volume"]
+        inputs:
+          - name: "volume"
+            type: "string"
+            description: "Volume name"
+            required: true
+            sub_command: "docker volume ls --format '{{.Name}},{{.Name}} ({{.Driver}})' 2>/dev/null"
+          - name: "force"
+            type: "flag"
+            description: "Force removal (-f)"
+            required: false
+            default: " -f"
+
+      - name: "prune"
+        description: "Remove all unused local volumes"
+        template: "docker volume prune{{all}}{{force}}"
+        tags: ["clean volumes", "remove unused volumes", "disk cleanup"]
+        inputs:
+          - name: "all"
+            type: "flag"
+            description: "Remove all volumes not referenced by any container (-a)"
+            required: false
+            default: " -a"
+          - name: "force"
+            type: "flag"
+            description: "Do not prompt for confirmation (-f)"
+            required: false
+            default: " -f"
+
+  - name: "networks"
+    description: "Create, inspect, and manage Docker networks"
+    options:
+      - name: "list"
+        description: "List all networks"
+        template: "docker network ls{{format}}"
+        tags: ["show networks", "list networks", "docker networks"]
+        inputs:
+          - name: "format"
+            type: "string"
+            description: "Custom format flag, e.g. --format 'table {{.Name}}\\t{{.Driver}}\\t{{.Scope}}' (leave blank for default)"
+            required: false
+
+      - name: "create"
+        description: "Create a network"
+        template: "docker network create{{driver}}{{subnet}}{{gateway}} {{name}}"
+        tags: ["new network", "make network"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Network name"
+            required: true
+          - name: "driver"
+            type: "string"
+            description: "Network driver, e.g. --driver bridge or --driver overlay (leave blank for bridge)"
+            required: false
+          - name: "subnet"
+            type: "string"
+            description: "Subnet in CIDR format, e.g. --subnet 172.20.0.0/16 (leave blank to skip)"
+            required: false
+          - name: "gateway"
+            type: "string"
+            description: "Gateway IP, e.g. --gateway 172.20.0.1 (leave blank to skip)"
+            required: false
+
+      - name: "inspect"
+        description: "Display detailed information about a network"
+        template: "docker network inspect{{format}} {{network}}"
+        tags: ["network details", "inspect network"]
+        inputs:
+          - name: "network"
+            type: "string"
+            description: "Network name or ID"
+            required: true
+            sub_command: "docker network ls --format '{{.Name}},{{.Name}} ({{.Driver}})' 2>/dev/null"
+          - name: "format"
+            type: "string"
+            description: "Go template format flag (leave blank for full JSON)"
+            required: false
+
+      - name: "connect"
+        description: "Connect a container to a network"
+        template: "docker network connect{{alias}}{{ip}} {{network}} {{container}}"
+        tags: ["attach network", "join network"]
+        inputs:
+          - name: "network"
+            type: "string"
+            description: "Network name or ID"
+            required: true
+            sub_command: "docker network ls --format '{{.Name}},{{.Name}} ({{.Driver}})' 2>/dev/null"
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "alias"
+            type: "string"
+            description: "Add a network-scoped alias for the container, e.g. --alias web (leave blank to skip)"
+            required: false
+          - name: "ip"
+            type: "string"
+            description: "Assign a specific IPv4 address, e.g. --ip 172.20.0.10 (leave blank to skip)"
+            required: false
+
+      - name: "disconnect"
+        description: "Disconnect a container from a network"
+        template: "docker network disconnect{{force}} {{network}} {{container}}"
+        tags: ["detach network", "remove from network"]
+        inputs:
+          - name: "network"
+            type: "string"
+            description: "Network name or ID"
+            required: true
+            sub_command: "docker network ls --format '{{.Name}},{{.Name}} ({{.Driver}})' 2>/dev/null"
+          - name: "container"
+            type: "string"
+            description: "Container name or ID"
+            required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Names}} ({{.Image}} - {{.Status}})' 2>/dev/null"
+          - name: "force"
+            type: "flag"
+            description: "Force disconnection (-f)"
+            required: false
+            default: " -f"
+
+      - name: "remove"
+        description: "Remove one or more networks"
+        template: "docker network rm {{network}}"
+        tags: ["delete network", "rm network"]
+        inputs:
+          - name: "network"
+            type: "string"
+            description: "Network name or ID"
+            required: true
+            sub_command: "docker network ls --format '{{.Name}},{{.Name}} ({{.Driver}})' 2>/dev/null"
+
+  - name: "system"
+    description: "System-wide Docker information and maintenance"
+    options:
+      - name: "info"
+        description: "Display system-wide Docker information"
+        template: "docker info{{format}}"
+        tags: ["docker info", "system info", "daemon info"]
+        inputs:
+          - name: "format"
+            type: "string"
+            description: "Go template format flag (leave blank for full output)"
+            required: false
+
+      - name: "prune-all"
+        description: "Remove all stopped containers, unused networks, dangling images, and build cache"
+        template: "docker system prune{{all}}{{volumes}}{{force}}"
+        tags: ["clean up docker", "free disk space", "remove all unused"]
+        inputs:
+          - name: "all"
+            type: "flag"
+            description: "Remove all unused images, not just dangling ones (-a)"
+            required: false
+            default: " -a"
+          - name: "volumes"
+            type: "flag"
+            description: "Also prune anonymous volumes (--volumes)"
+            required: false
+            default: " --volumes"
+          - name: "force"
+            type: "flag"
+            description: "Do not prompt for confirmation (-f)"
+            required: false
+            default: " -f"
+
+      - name: "df"
+        description: "Show Docker disk usage"
+        template: "docker system df{{verbose}}"
+        tags: ["disk usage", "docker disk", "storage summary"]
+        inputs:
+          - name: "verbose"
+            type: "flag"
+            description: "Show detailed space usage per object (-v)"
+            required: false
+            default: " -v"

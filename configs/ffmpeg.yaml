@@ -1,0 +1,329 @@
+name: "ffmpeg"
+description: "Audio and video processing: convert, inspect, edit, stream"
+version: "1.0.0"
+commands:
+  - name: "convert"
+    description: "Convert media between formats and containers"
+    options:
+      - name: "video-to-mp4"
+        description: "Convert a video file to MP4 (H.264 + AAC)"
+        template: "ffmpeg -i {{input}}{{video_codec}}{{audio_codec}}{{crf}}{{preset}} {{output}}"
+        tags: ["convert to mp4", "encode h264", "video convert"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input file path"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file path (with .mp4 extension)"
+            required: true
+          - name: "video_codec"
+            type: "string"
+            description: "Video codec, e.g. -c:v libx264 (leave blank for default)"
+            required: false
+            default: " -c:v libx264"
+          - name: "audio_codec"
+            type: "string"
+            description: "Audio codec, e.g. -c:a aac (leave blank for default)"
+            required: false
+            default: " -c:a aac"
+          - name: "crf"
+            type: "string"
+            description: "Constant Rate Factor quality 0–51 (lower=better), e.g. -crf 23 (leave blank for default)"
+            required: false
+          - name: "preset"
+            type: "string"
+            description: "Encoding speed preset, e.g. -preset fast or -preset slow (leave blank for default)"
+            required: false
+
+      - name: "video-to-gif"
+        description: "Convert a video clip to an animated GIF"
+        template: "ffmpeg -i {{input}}{{start}}{{duration}}{{fps}}{{scale}} {{output}}"
+        tags: ["video to gif", "create gif", "animated gif"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input video file"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output GIF file path"
+            required: true
+          - name: "start"
+            type: "string"
+            description: "Start time, e.g. -ss 00:00:05 (leave blank for beginning)"
+            required: false
+          - name: "duration"
+            type: "string"
+            description: "Duration, e.g. -t 5 (leave blank for full length)"
+            required: false
+          - name: "fps"
+            type: "string"
+            description: "GIF frame rate filter, e.g. -vf fps=10 (leave blank for source fps)"
+            required: false
+            default: " -vf fps=10,scale=480:-1:flags=lanczos"
+          - name: "scale"
+            type: "string"
+            description: "Scale filter override, e.g. -vf scale=640:-1 (leave blank to use fps default above)"
+            required: false
+
+      - name: "audio-to-mp3"
+        description: "Convert an audio file to MP3"
+        template: "ffmpeg -i {{input}}{{bitrate}}{{sample_rate}} {{output}}"
+        tags: ["audio to mp3", "convert audio", "encode mp3"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input audio file"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output MP3 file path"
+            required: true
+          - name: "bitrate"
+            type: "string"
+            description: "Audio bitrate, e.g. -b:a 192k (leave blank for default)"
+            required: false
+            default: " -b:a 192k"
+          - name: "sample_rate"
+            type: "string"
+            description: "Sample rate, e.g. -ar 44100 (leave blank for source rate)"
+            required: false
+
+      - name: "change-container"
+        description: "Remux a video into a different container without re-encoding"
+        template: "ffmpeg -i {{input}} -c copy {{output}}"
+        tags: ["remux", "change container", "copy streams", "mkv to mp4"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input file, e.g. video.mkv"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file with desired extension, e.g. video.mp4"
+            required: true
+
+  - name: "inspect"
+    description: "Inspect media file metadata"
+    options:
+      - name: "probe"
+        description: "Display detailed information about a media file"
+        template: "ffprobe -hide_banner {{file}}"
+        tags: ["probe", "media info", "ffprobe", "file metadata"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Media file to inspect"
+            required: true
+
+      - name: "probe-json"
+        description: "Output media file information as JSON"
+        template: "ffprobe -v quiet -print_format json -show_format -show_streams {{file}}"
+        tags: ["probe json", "media metadata json", "ffprobe json"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Media file to inspect"
+            required: true
+
+  - name: "edit"
+    description: "Trim, extract, and transform media"
+    options:
+      - name: "trim"
+        description: "Cut a segment from a media file"
+        template: "ffmpeg -i {{input}}{{start}}{{duration}} -c copy {{output}}"
+        tags: ["trim video", "cut segment", "clip video"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input file"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file"
+            required: true
+          - name: "start"
+            type: "string"
+            description: "Start time, e.g. -ss 00:01:30"
+            required: true
+          - name: "duration"
+            type: "string"
+            description: "Duration to keep, e.g. -t 60 (or use -to HH:MM:SS for end time)"
+            required: true
+
+      - name: "extract-audio"
+        description: "Extract the audio track from a video file"
+        template: "ffmpeg -i {{input}} -vn{{codec}} {{output}}"
+        tags: ["extract audio", "strip audio", "audio from video"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input video file"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output audio file, e.g. audio.mp3 or audio.aac"
+            required: true
+          - name: "codec"
+            type: "string"
+            description: "Audio codec, e.g. -c:a copy to remux or -c:a libmp3lame to re-encode (leave blank for default)"
+            required: false
+            default: " -c:a copy"
+
+      - name: "extract-frames"
+        description: "Extract frames from a video as image files"
+        template: "ffmpeg -i {{input}}{{start}}{{fps}} {{output_pattern}}"
+        tags: ["extract frames", "video to images", "screenshots"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input video file"
+            required: true
+          - name: "output_pattern"
+            type: "string"
+            description: "Output filename pattern, e.g. frames/frame_%04d.png"
+            required: true
+            default: "frame_%04d.png"
+          - name: "start"
+            type: "string"
+            description: "Start time, e.g. -ss 00:00:10 (leave blank for beginning)"
+            required: false
+          - name: "fps"
+            type: "string"
+            description: "Frame rate, e.g. -vf fps=1 for 1 frame/sec (leave blank for all frames)"
+            required: false
+            default: " -vf fps=1"
+
+      - name: "concat"
+        description: "Concatenate multiple video files using a concat list file"
+        template: "ffmpeg -f concat -safe 0 -i {{list_file}} -c copy {{output}}"
+        tags: ["concat video", "join videos", "merge clips"]
+        inputs:
+          - name: "list_file"
+            type: "string"
+            description: "Text file listing inputs (each line: file 'path/to/clip.mp4')"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file"
+            required: true
+
+      - name: "scale"
+        description: "Resize a video to a new resolution"
+        template: "ffmpeg -i {{input}} -vf scale={{width}}:{{height}}{{codec}} {{output}}"
+        tags: ["resize video", "scale video", "change resolution"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input video file"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file"
+            required: true
+          - name: "width"
+            type: "string"
+            description: "Output width in pixels, or -1 to maintain aspect ratio"
+            required: true
+            default: "1280"
+          - name: "height"
+            type: "string"
+            description: "Output height in pixels, or -1 to maintain aspect ratio"
+            required: true
+            default: "720"
+          - name: "codec"
+            type: "string"
+            description: "Video codec, e.g. -c:v libx264 (leave blank for re-encode with defaults)"
+            required: false
+
+      - name: "compress-video"
+        description: "Compress a video by reducing quality and bitrate"
+        template: "ffmpeg -i {{input}} -c:v libx264 -crf {{crf}} -preset {{preset}} -c:a aac -b:a {{audio_bitrate}} {{output}}"
+        tags: ["compress video", "reduce file size", "lower bitrate"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input video file"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file"
+            required: true
+          - name: "crf"
+            type: "string"
+            description: "CRF quality value (18=high quality, 28=more compressed)"
+            required: true
+            default: "23"
+          - name: "preset"
+            type: "string"
+            description: "Encoding preset (ultrafast, fast, medium, slow, veryslow)"
+            required: true
+            default: "medium"
+          - name: "audio_bitrate"
+            type: "string"
+            description: "Audio bitrate"
+            required: true
+            default: "128k"
+
+  - name: "stream"
+    description: "Record screen and stream to RTMP"
+    options:
+      - name: "record-screen"
+        description: "Record the screen to a video file (Linux x11grab)"
+        template: "ffmpeg -f x11grab -r {{fps}} -s {{resolution}} -i {{display}}{{audio}} {{output}}"
+        tags: ["screen record", "screen capture", "x11grab", "ffmpeg screen"]
+        inputs:
+          - name: "output"
+            type: "string"
+            description: "Output file path, e.g. recording.mp4"
+            required: true
+          - name: "display"
+            type: "string"
+            description: "X11 display and offset, e.g. :0.0+0,0"
+            required: true
+            default: ":0.0+0,0"
+          - name: "resolution"
+            type: "string"
+            description: "Capture resolution, e.g. 1920x1080"
+            required: true
+            default: "1920x1080"
+          - name: "fps"
+            type: "string"
+            description: "Capture frame rate"
+            required: true
+            default: "30"
+          - name: "audio"
+            type: "string"
+            description: "Audio input, e.g. -f pulse -i default (leave blank for no audio)"
+            required: false
+
+      - name: "stream-to-rtmp"
+        description: "Stream a video file or device to an RTMP endpoint"
+        template: "ffmpeg -re -i {{input}} -c:v libx264 -preset{{preset}} -b:v {{video_bitrate}} -c:a aac -b:a {{audio_bitrate}} -f flv {{rtmp_url}}"
+        tags: ["stream rtmp", "live stream", "ffmpeg stream", "twitch youtube stream"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Input file or device, e.g. video.mp4 or /dev/video0"
+            required: true
+          - name: "rtmp_url"
+            type: "string"
+            description: "RTMP destination URL with stream key, e.g. rtmp://live.twitch.tv/app/YOUR_KEY"
+            required: true
+          - name: "preset"
+            type: "string"
+            description: "x264 preset"
+            required: true
+            default: " veryfast"
+          - name: "video_bitrate"
+            type: "string"
+            description: "Video bitrate"
+            required: true
+            default: "3000k"
+          - name: "audio_bitrate"
+            type: "string"
+            description: "Audio bitrate"
+            required: true
+            default: "128k"

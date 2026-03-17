@@ -164,7 +164,7 @@ List of command sets to build, while this application started with the goal of a
   - **network-info**: `ip-addresses`, `public-ip`, `routing-table`, `default-gateway`, `dns-config`, `arp-table`, `open-ports`
 
 # Docker command set
-- [ ] Docker container and image management
+- [x] Docker container and image management
   - **containers**: `list`, `list-all`, `run`, `run-interactive`, `exec`, `logs`, `stop`, `start`, `restart`, `remove`, `inspect`, `stats`, `top`, `copy`
   - **images**: `list`, `pull`, `build`, `tag`, `push`, `remove`, `inspect`, `prune`
   - **volumes**: `list`, `create`, `inspect`, `remove`, `prune`
@@ -172,90 +172,90 @@ List of command sets to build, while this application started with the goal of a
   - **system**: `info`, `prune-all`, `df`
 
 # Docker Compose command set
-- [ ] Docker Compose multi-container orchestration
+- [x] Docker Compose multi-container orchestration
   - **lifecycle**: `up`, `up-detached`, `down`, `start`, `stop`, `restart`
   - **inspect**: `ps`, `logs`, `top`, `config`
   - **build**: `build`, `pull`
   - **exec**: `exec`, `run`
 
 # curl command set
-- [ ] HTTP requests and file transfers
+- [x] HTTP requests and file transfers
   - **request**: `get`, `post-json`, `post-form`, `put`, `patch`, `delete`, `head`
   - **auth**: `bearer-token`, `basic-auth`
   - **download**: `download-file`, `download-resume`, `follow-redirects`
   - **inspect**: `verbose`, `response-headers-only`, `time-request`
 
 # jq command set
-- [ ] JSON processing and querying
+- [x] JSON processing and querying
   - **query**: `pretty-print`, `select-field`, `select-nested`, `filter-array`, `select-where`, `keys`, `values`
   - **transform**: `map`, `to-csv`, `to-entries`, `from-entries`, `del-field`, `add-field`
   - **reduce**: `length`, `first`, `last`, `unique`, `group-by`, `sort-by`
   - **file**: `from-file`, `slurp-multiple`
 
 # awk command set
-- [ ] Pattern scanning and text processing
+- [x] Pattern scanning and text processing
   - **print**: `print-field`, `print-range`, `print-matching`, `print-not-matching`, `print-last-field`, `print-line-count`
   - **transform**: `add-prefix`, `reorder-fields`, `custom-delimiter`, `sum-column`, `average-column`
   - **filter**: `match-pattern`, `numeric-compare`, `between-lines`
 
 # find command set
-- [ ] File search and bulk operations
+- [x] File search and bulk operations
   - **search**: `by-name`, `by-extension`, `by-type`, `by-size`, `by-modified-time`, `by-owner`, `by-permissions`
   - **action**: `delete-matching`, `exec-on-matching`, `copy-matching`, `print-with-size`
 
 # tar command set
-- [ ] Archive creation and extraction
+- [x] Archive creation and extraction
   - **create**: `create-gzip`, `create-bzip2`, `create-xz`, `create-uncompressed`
   - **extract**: `extract`, `extract-to-dir`, `extract-single-file`
   - **inspect**: `list-contents`, `test-archive`
 
 # grep command set
-- [ ] Pattern search in files and streams
+- [x] Pattern search in files and streams
   - **search**: `search-file`, `search-recursive`, `search-case-insensitive`, `search-word`, `invert-match`, `count-matches`
   - **context**: `before-context`, `after-context`, `surrounding-context`
   - **output**: `filenames-only`, `line-numbers`, `with-color`
   - **extended**: `extended-regex`, `fixed-string`, `perl-regex`
 
 # disk command set
-- [ ] Disk usage and filesystem inspection
+- [x] Disk usage and filesystem inspection
   - **usage**: `disk-free`, `disk-free-human`, `inode-usage`, `dir-size`, `dir-size-sorted`, `find-large-files`
   - **filesystem**: `list-mounts`, `mount`, `unmount`, `remount-readonly`
   - **io**: `io-stats` (iostat), `io-per-process` (iotop)
 
 # permissions command set
-- [ ] File and directory permission management
+- [x] File and directory permission management
   - **chmod**: `set-permissions`, `add-execute`, `remove-write`, `recursive-chmod`, `set-from-reference`
   - **chown**: `change-owner`, `change-group`, `change-owner-and-group`, `recursive-chown`
   - **acl**: `get-acl`, `set-acl`, `remove-acl`
 
 # terraform command set
-- [ ] Infrastructure as Code with Terraform
+- [x] Infrastructure as Code with Terraform
   - **workspace**: `list`, `new`, `select`, `delete`
   - **core**: `init`, `validate`, `plan`, `apply`, `destroy`, `refresh`
   - **state**: `list`, `show`, `move`, `remove`, `pull`, `push`
   - **inspect**: `output`, `show`, `graph`, `providers`
 
 # helm command set
-- [ ] Kubernetes package manager
+- [x] Kubernetes package manager
   - **repo**: `list`, `add`, `update`, `remove`
   - **chart**: `search`, `inspect`, `pull`
   - **release**: `list`, `install`, `upgrade`, `rollback`, `uninstall`, `status`, `history`
   - **inspect**: `get-values`, `get-manifest`, `diff`
 
 # gpg command set
-- [ ] GNU Privacy Guard encryption and signing
+- [x] GNU Privacy Guard encryption and signing
   - **keys**: `list-public`, `list-secret`, `import`, `export`, `delete-public`, `delete-secret`, `generate`, `search-keyserver`
   - **encrypt**: `encrypt-file`, `encrypt-symmetric`, `decrypt-file`
   - **sign**: `sign-file`, `clearsign`, `verify`, `sign-and-encrypt`
   - **keyring**: `fingerprint`, `edit-key`, `export-ownertrust`, `import-ownertrust`
 
 # crontab command set
-- [ ] Scheduled task management
+- [x] Scheduled task management
   - **manage**: `list`, `edit`, `remove-all`, `install-from-file`
   - **system**: `list-system-crons`, `validate-expression`
 
 # ffmpeg command set
-- [ ] Audio and video processing
+- [x] Audio and video processing
   - **convert**: `video-to-mp4`, `video-to-gif`, `audio-to-mp3`, `change-container`
   - **inspect**: `probe`, `probe-json`
   - **edit**: `trim`, `extract-audio`, `extract-frames`, `concat`, `scale`, `compress-video`

@@ -141,6 +141,7 @@ Every screen is a struct that implements `tea.Model` (`Init`, `Update`, `View`).
 - Follow the schema in `docs/config-format.md`.
 - Template placeholders use `{{variable_name}}` syntax.
 - `required: true` fields must be filled before the form can be confirmed.
+- **Any modification to an existing config file** (adding, removing, or changing commands, options, inputs, templates, or descriptions) **requires a `version` bump** in that file's `version` field, following [Semantic Versioning](https://semver.org/spec/v2.0.0.html): increment the patch version for minor fixes/additions, minor version for new commands or groups, major version for breaking changes to existing templates.
 
 ### Tests
 - Unit tests live alongside source files (`_test.go`).
