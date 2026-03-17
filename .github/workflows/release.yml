@@ -90,6 +90,46 @@ jobs:
           NEXT="${{ steps.versions.outputs.next }}"
           LDFLAGS="-X github.com/dwilson2547/command-builder/internal/tui.AppVersion=${NEXT}"
           go build -ldflags "${LDFLAGS}" -o "command-builder-linux-arm64" .
+      
+      - name: Build darwin/arm64
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          CGO_ENABLED: "0"
+        run: |
+          NEXT="${{ steps.versions.outputs.next }}"
+          LDFLAGS="-X github.com/dwilson2547/command-builder/internal/tui.AppVersion=${NEXT}"
+          go build -ldflags "${LDFLAGS}" -o "command-builder-darwin-arm64" .
+      
+      - name: Build darwin/amd64
+        env:
+          GOOS: darwin
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+        run: |
+          NEXT="${{ steps.versions.outputs.next }}"
+          LDFLAGS="-X github.com/dwilson2547/command-builder/internal/tui.AppVersion=${NEXT}"
+          go build -ldflags "${LDFLAGS}" -o "command-builder-darwin-amd64" .
+      
+      - name: Build windows/amd64
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+        run: |
+          NEXT="${{ steps.versions.outputs.next }}"
+          LDFLAGS="-X github.com/dwilson2547/command-builder/internal/tui.AppVersion=${NEXT}"
+          go build -ldflags "${LDFLAGS}" -o "command-builder-windows-amd64.exe" .
+      
+      - name: Build windows/arm64
+        env:
+          GOOS: windows
+          GOARCH: arm64
+          CGO_ENABLED: "0"
+        run: |
+          NEXT="${{ steps.versions.outputs.next }}"
+          LDFLAGS="-X github.com/dwilson2547/command-builder/internal/tui.AppVersion=${NEXT}"
+          go build -ldflags "${LDFLAGS}" -o "command-builder-windows-arm64.exe" .
 
       # ── 5. Generate a changelog excerpt for the release notes ──────────
       - name: Extract changelog section
@@ -116,4 +156,8 @@ jobs:
           files: |
             command-builder-linux-amd64
             command-builder-linux-arm64
+            command-builder-darwin-arm64
+            command-builder-darwin-amd64
+            command-builder-windows-amd64.exe
+            command-builder-windows-arm64.exe
           fail_on_unmatched_files: true
