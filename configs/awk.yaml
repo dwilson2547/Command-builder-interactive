@@ -1,0 +1,265 @@
+name: "awk"
+description: "Pattern scanning and text processing: print, transform, filter"
+version: "1.0.0"
+commands:
+  - name: "print"
+    description: "Print fields and lines from input"
+    options:
+      - name: "print-field"
+        description: "Print a specific field from each line"
+        template: "{{input}} | awk{{delimiter}} '{print ${{field}}}'"
+        tags: ["print column", "extract field", "cut column"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process, e.g. cat file.txt"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field number to print (1-based), e.g. 2"
+            required: true
+            default: "1"
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag, e.g. -F: or -F, (leave blank for whitespace)"
+            required: false
+
+      - name: "print-range"
+        description: "Print a range of fields from each line"
+        template: "{{input}} | awk{{delimiter}} '{for(i={{start}};i<={{end}};i++) printf \"%s%s\",$i,(i=={{end}}?\"\\n\":OFS)}'"
+        tags: ["print range", "multiple fields", "field range"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "start"
+            type: "string"
+            description: "Starting field number"
+            required: true
+            default: "1"
+          - name: "end"
+            type: "string"
+            description: "Ending field number"
+            required: true
+            default: "3"
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag, e.g. -F: (leave blank for whitespace)"
+            required: false
+
+      - name: "print-matching"
+        description: "Print lines matching a pattern"
+        template: "{{input}} | awk '/{{pattern}}/'"
+        tags: ["grep awk", "filter lines", "pattern match"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "pattern"
+            type: "string"
+            description: "Regex pattern to match"
+            required: true
+
+      - name: "print-not-matching"
+        description: "Print lines that do not match a pattern"
+        template: "{{input}} | awk '!/{{pattern}}/'"
+        tags: ["invert match", "exclude lines", "not matching"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "pattern"
+            type: "string"
+            description: "Regex pattern to exclude"
+            required: true
+
+      - name: "print-last-field"
+        description: "Print the last field of each line"
+        template: "{{input}} | awk{{delimiter}} '{print $NF}'"
+        tags: ["last column", "last field", "NF"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag, e.g. -F: (leave blank for whitespace)"
+            required: false
+
+      - name: "print-line-count"
+        description: "Count the number of lines in the input"
+        template: "{{input}} | awk 'END{print NR}'"
+        tags: ["count lines", "line count", "wc -l"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+
+  - name: "transform"
+    description: "Reformat and compute values from input"
+    options:
+      - name: "add-prefix"
+        description: "Prepend a fixed string to every line"
+        template: "{{input}} | awk '{print \"{{prefix}}\" $0}'"
+        tags: ["prefix lines", "prepend", "add text"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "prefix"
+            type: "string"
+            description: "Text to prepend to each line"
+            required: true
+
+      - name: "reorder-fields"
+        description: "Print selected fields in a specific order"
+        template: "{{input}} | awk{{delimiter}} '{print {{fields}}}'"
+        tags: ["reorder columns", "rearrange fields", "column order"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "fields"
+            type: "string"
+            description: "Fields in desired order separated by commas, e.g. $3,$1,$2"
+            required: true
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag, e.g. -F: (leave blank for whitespace)"
+            required: false
+
+      - name: "custom-delimiter"
+        description: "Change the output field separator"
+        template: "{{input}} | awk{{delimiter}} 'BEGIN{OFS=\"{{ofs}}\"} {$1=$1; print}'"
+        tags: ["change delimiter", "output separator", "reformat"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "delimiter"
+            type: "string"
+            description: "Input field separator, e.g. -F: or -F, (leave blank for whitespace)"
+            required: false
+          - name: "ofs"
+            type: "string"
+            description: "Output field separator, e.g. , or | or \\t"
+            required: true
+            default: ","
+
+      - name: "sum-column"
+        description: "Sum the values in a numeric column"
+        template: "{{input}} | awk{{delimiter}} '{sum += ${{field}}} END{print sum}'"
+        tags: ["sum column", "total", "add numbers"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field number to sum"
+            required: true
+            default: "1"
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag, e.g. -F, (leave blank for whitespace)"
+            required: false
+
+      - name: "average-column"
+        description: "Calculate the average of a numeric column"
+        template: "{{input}} | awk{{delimiter}} '{sum += ${{field}}; count++} END{if(count>0) print sum/count}'"
+        tags: ["average column", "mean", "numeric average"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field number to average"
+            required: true
+            default: "1"
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag, e.g. -F, (leave blank for whitespace)"
+            required: false
+
+  - name: "filter"
+    description: "Filter lines based on patterns and conditions"
+    options:
+      - name: "match-pattern"
+        description: "Print lines where a field matches a pattern"
+        template: "{{input}} | awk{{delimiter}} '${{field}} ~ /{{pattern}}/'"
+        tags: ["field match", "column filter", "regex field"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field number to test"
+            required: true
+            default: "1"
+          - name: "pattern"
+            type: "string"
+            description: "Regex pattern to match against the field"
+            required: true
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag, e.g. -F: (leave blank for whitespace)"
+            required: false
+
+      - name: "numeric-compare"
+        description: "Print lines where a numeric field meets a condition"
+        template: "{{input}} | awk{{delimiter}} '${{field}} {{operator}} {{value}}'"
+        tags: ["numeric filter", "compare column", "threshold"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "field"
+            type: "string"
+            description: "Field number to compare"
+            required: true
+            default: "1"
+          - name: "operator"
+            type: "string"
+            description: "Comparison operator: >, <, >=, <=, ==, !="
+            required: true
+            default: ">"
+          - name: "value"
+            type: "string"
+            description: "Value to compare against"
+            required: true
+          - name: "delimiter"
+            type: "string"
+            description: "Field separator flag (leave blank for whitespace)"
+            required: false
+
+      - name: "between-lines"
+        description: "Print lines between two patterns (inclusive)"
+        template: "{{input}} | awk '/{{start_pattern}}/,/{{end_pattern}}/'"
+        tags: ["line range", "between patterns", "start end pattern"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Command or file to process"
+            required: true
+          - name: "start_pattern"
+            type: "string"
+            description: "Pattern marking the start of the range"
+            required: true
+          - name: "end_pattern"
+            type: "string"
+            description: "Pattern marking the end of the range"
+            required: true

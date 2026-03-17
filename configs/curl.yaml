@@ -1,0 +1,327 @@
+name: "curl"
+description: "HTTP requests and file transfers: request, auth, download, inspect"
+version: "1.0.0"
+commands:
+  - name: "request"
+    description: "Make HTTP requests"
+    options:
+      - name: "get"
+        description: "Send an HTTP GET request"
+        template: "curl{{silent}}{{location}}{{url}}"
+        tags: ["http get", "fetch url", "http request"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL, e.g. https://api.example.com/users"
+            required: true
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "post-json"
+        description: "Send an HTTP POST request with a JSON body"
+        template: "curl{{silent}}{{location}} -X POST -H 'Content-Type: application/json'{{data}}{{url}}"
+        tags: ["http post", "post json", "rest api"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "data"
+            type: "string"
+            description: "JSON body, e.g. -d '{\"key\":\"value\"}'"
+            required: true
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "post-form"
+        description: "Send an HTTP POST request with form data"
+        template: "curl{{silent}}{{location}} -X POST{{form_data}}{{url}}"
+        tags: ["http post", "form post", "application/x-www-form-urlencoded"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "form_data"
+            type: "string"
+            description: "Form fields, e.g. --data-urlencode 'user=alice' --data-urlencode 'pass=secret'"
+            required: true
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "put"
+        description: "Send an HTTP PUT request with a JSON body"
+        template: "curl{{silent}}{{location}} -X PUT -H 'Content-Type: application/json'{{data}}{{url}}"
+        tags: ["http put", "update resource", "rest api"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "data"
+            type: "string"
+            description: "JSON body, e.g. -d '{\"key\":\"value\"}'"
+            required: true
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "patch"
+        description: "Send an HTTP PATCH request with a JSON body"
+        template: "curl{{silent}}{{location}} -X PATCH -H 'Content-Type: application/json'{{data}}{{url}}"
+        tags: ["http patch", "partial update", "rest api"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "data"
+            type: "string"
+            description: "JSON body, e.g. -d '{\"status\":\"active\"}'"
+            required: true
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "delete"
+        description: "Send an HTTP DELETE request"
+        template: "curl{{silent}}{{location}} -X DELETE{{url}}"
+        tags: ["http delete", "remove resource", "rest api"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "head"
+        description: "Send an HTTP HEAD request (response headers only)"
+        template: "curl{{silent}}{{location}} -I{{url}}"
+        tags: ["http head", "check headers", "check url"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+  - name: "auth"
+    description: "Authenticated HTTP requests"
+    options:
+      - name: "bearer-token"
+        description: "Send a request with a Bearer token in the Authorization header"
+        template: "curl{{silent}}{{location}} -H 'Authorization: Bearer {{token}}'{{method}}{{data}}{{url}}"
+        tags: ["bearer token", "jwt auth", "oauth", "authorization header"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "token"
+            type: "string"
+            description: "Bearer token value"
+            required: true
+          - name: "method"
+            type: "string"
+            description: "HTTP method flag, e.g. -X POST (leave blank for GET)"
+            required: false
+          - name: "data"
+            type: "string"
+            description: "Request body, e.g. -d '{\"key\":\"val\"}' (leave blank to skip)"
+            required: false
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "basic-auth"
+        description: "Send a request with HTTP Basic authentication"
+        template: "curl{{silent}}{{location}} -u '{{username}}:{{password}}'{{method}}{{data}}{{url}}"
+        tags: ["basic auth", "username password", "http auth"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "username"
+            type: "string"
+            description: "Username"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Password"
+            required: true
+          - name: "method"
+            type: "string"
+            description: "HTTP method flag, e.g. -X POST (leave blank for GET)"
+            required: false
+          - name: "data"
+            type: "string"
+            description: "Request body (leave blank to skip)"
+            required: false
+          - name: "silent"
+            type: "flag"
+            description: "Suppress progress meter (-s)"
+            required: false
+            default: " -s"
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+  - name: "download"
+    description: "Download files via HTTP/HTTPS/FTP"
+    options:
+      - name: "download-file"
+        description: "Download a file and save it to a path"
+        template: "curl{{location}} -o {{output}}{{url}}"
+        tags: ["download", "save file", "curl -o"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "URL to download"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file path"
+            required: true
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "download-resume"
+        description: "Resume a previously interrupted download"
+        template: "curl{{location}} -C - -o {{output}}{{url}}"
+        tags: ["resume download", "continue download", "partial download"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "URL to download"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file path (existing partial file)"
+            required: true
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "follow-redirects"
+        description: "Fetch a URL following all redirects, saving to a file named by the server"
+        template: "curl -L -O{{url}}"
+        tags: ["follow redirects", "curl -LO", "remote filename"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "URL to fetch"
+            required: true
+
+  - name: "inspect"
+    description: "Inspect requests, responses, and timings"
+    options:
+      - name: "verbose"
+        description: "Show full request and response details including headers"
+        template: "curl -v{{location}}{{url}}"
+        tags: ["verbose", "debug request", "show headers"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "response-headers-only"
+        description: "Print only response headers using a silent body fetch"
+        template: "curl -sI{{location}}{{url}}"
+        tags: ["response headers", "http headers", "status code"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true
+          - name: "location"
+            type: "flag"
+            description: "Follow redirects (-L)"
+            required: false
+            default: " -L"
+
+      - name: "time-request"
+        description: "Measure total request time and phase timings"
+        template: "curl -s -o /dev/null -w 'namelookup: %{time_namelookup}\\nconnect: %{time_connect}\\nttfb: %{time_starttransfer}\\ntotal: %{time_total}\\nhttp_code: %{http_code}\\n'{{url}}"
+        tags: ["timing", "latency", "performance", "ttfb"]
+        inputs:
+          - name: "url"
+            type: "string"
+            description: "Target URL"
+            required: true

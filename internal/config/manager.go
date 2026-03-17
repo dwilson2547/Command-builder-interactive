@@ -16,29 +16,43 @@ type Manager struct {
 	configs []*Config
 }
 
+// defaultTombstonePath returns the path to the marker file that suppresses
+// the embedded default config on subsequent launches.
+func defaultTombstonePath() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "command-builder", "configs", ".default-hidden")
+}
+
 // NewManager creates a Manager, loading the embedded default config and any
 // user configs from ~/.config/command-builder/configs/.
 func NewManager(defaultData []byte) (*Manager, error) {
 	m := &Manager{}
 
-	// Load the embedded default config.
-	if len(defaultData) > 0 {
-		cfg, err := LoadConfigFromBytes(defaultData)
-		if err == nil {
-			cfg.FilePath = "" // embedded – no file path
-			m.configs = append(m.configs, cfg)
+	_ = EnsureConfigDir()
+
+	// Load user configs first so we can detect a promoted / user-overridden
+	// default.yaml before deciding whether to load the embedded default.
+	userDefaultLoaded := false
+	if userCfgs, err := LoadAllConfigs(GetConfigDir()); err == nil {
+		for _, uc := range userCfgs {
+			m.configs = append(m.configs, uc)
+			if uc.Name == "default" {
+				userDefaultLoaded = true
+			}
 		}
 	}
 
-	// Load user configs.
-	if err := EnsureConfigDir(); err == nil {
-		userCfgs, _ := LoadAllConfigs(GetConfigDir())
-		for _, uc := range userCfgs {
-			// Don't duplicate a config whose name matches the default.
-			if uc.Name == "default" {
-				continue
-			}
-			m.configs = append(m.configs, uc)
+	// Load the embedded default config unless:
+	//   (a) a user file-backed "default" config is already loaded, or
+	//   (b) the user has explicitly deleted it (tombstone present).
+	_, tombstoneErr := os.Stat(defaultTombstonePath())
+	tombstoneExists := tombstoneErr == nil
+	if len(defaultData) > 0 && !userDefaultLoaded && !tombstoneExists {
+		cfg, err := LoadConfigFromBytes(defaultData)
+		if err == nil {
+			cfg.FilePath = "" // embedded – no file path
+			// Prepend so the built-in default is always first in the list.
+			m.configs = append([]*Config{cfg}, m.configs...)
 		}
 	}
 
@@ -81,7 +95,19 @@ func (m *Manager) AddConfig(cfg *Config) error {
 	return nil
 }
 
+// UpdateConfig persists in-memory changes made to an already-loaded config.
+// Returns an error if the config has no file path (built-in configs).
+func (m *Manager) UpdateConfig(cfg *Config) error {
+	if cfg.FilePath == "" {
+		return fmt.Errorf("config %q is a built-in config and cannot be modified", cfg.Name)
+	}
+	return SaveConfig(cfg, cfg.FilePath)
+}
+
 // DeleteConfig removes a config by name, deleting its file if it has one.
+// If the config is the embedded built-in (FilePath == ""), a tombstone marker
+// is written to the config directory so the embedded default is not reloaded
+// on the next application launch.
 func (m *Manager) DeleteConfig(name string) error {
 	for i, c := range m.configs {
 		if c.Name == name {
@@ -89,12 +115,34 @@ func (m *Manager) DeleteConfig(name string) error {
 				if err := os.Remove(c.FilePath); err != nil && !os.IsNotExist(err) {
 					return err
 				}
+			} else {
+				// Built-in embedded config: write a tombstone so it stays hidden
+				// on the next launch. Ignore write errors (non-fatal).
+				_ = os.WriteFile(defaultTombstonePath(), []byte{}, 0o644)
 			}
 			m.configs = append(m.configs[:i], m.configs[i+1:]...)
 			return nil
 		}
 	}
 	return fmt.Errorf("config %q not found", name)
+}
+
+// PromoteDefaultConfig saves an embedded (file-path-less) config to the user's
+// config directory so it can be edited and persisted. The config's FilePath is
+// updated in place. If the config already has a FilePath this is a no-op.
+func (m *Manager) PromoteDefaultConfig(cfg *Config) error {
+	if cfg.FilePath != "" {
+		return nil // already file-backed
+	}
+	if err := EnsureConfigDir(); err != nil {
+		return err
+	}
+	path := filepath.Join(GetConfigDir(), sanitizeName(cfg.Name)+".yaml")
+	if err := SaveConfig(cfg, path); err != nil {
+		return err
+	}
+	cfg.FilePath = path
+	return nil
 }
 
 // ExportConfig copies a config's YAML to the given destination path.
@@ -138,6 +186,8 @@ func (m *Manager) ImportConfigFromURL(rawURL string) (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
+	cfg.SourceURL = rawURL
+
 	// Resolve name collision.
 	base := cfg.Name
 	counter := 1
@@ -150,6 +200,105 @@ func (m *Manager) ImportConfigFromURL(rawURL string) (*Config, error) {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+// ImportConfigFromFile loads a YAML config from a local file path and adds it.
+// A leading ~ in the path is expanded to the user's home directory.
+// The config is copied into the command-builder config directory, mirroring
+// the behaviour of ImportConfigFromURL.
+func (m *Manager) ImportConfigFromFile(rawPath string) (*Config, error) {
+	// Expand ~ prefix.
+	path := rawPath
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("cannot determine home directory: %w", err)
+		}
+		path = filepath.Join(home, path[2:])
+	} else if path == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("cannot determine home directory: %w", err)
+		}
+		path = home
+	}
+
+	// Resolve to absolute path.
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid path %q: %w", rawPath, err)
+	}
+
+	cfg, err := LoadConfig(abs)
+	if err != nil {
+		return nil, fmt.Errorf("load config from file: %w", err)
+	}
+
+	// Resolve name collision.
+	base := cfg.Name
+	counter := 1
+	for m.GetConfig(cfg.Name) != nil {
+		cfg.Name = fmt.Sprintf("%s-%d", base, counter)
+		counter++
+	}
+
+	// Copy into the managed config directory.
+	if err := m.AddConfig(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// PullConfig re-fetches a config from its SourceURL and replaces its commands
+// in place, preserving the config name and file path.
+func (m *Manager) PullConfig(name string) (*Config, error) {
+	existing := m.GetConfig(name)
+	if existing == nil {
+		return nil, fmt.Errorf("config %q not found", name)
+	}
+	if existing.SourceURL == "" {
+		return nil, fmt.Errorf("config %q has no source URL", name)
+	}
+
+	parsed, err := url.ParseRequestURI(existing.SourceURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid source URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, fmt.Errorf("unsupported URL scheme %q", parsed.Scheme)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(existing.SourceURL) //nolint:noctx
+	if err != nil {
+		return nil, fmt.Errorf("fetch %s: %w", existing.SourceURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d fetching %s", resp.StatusCode, existing.SourceURL)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	fresh, err := LoadConfigFromBytes(data)
+	if err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	// Preserve identity fields; replace content.
+	existing.Description = fresh.Description
+	existing.Version = fresh.Version
+	existing.Commands = fresh.Commands
+	// Keep existing.SourceURL and existing.FilePath unchanged.
+
+	if err := m.UpdateConfig(existing); err != nil {
+		return nil, err
+	}
+	return existing, nil
 }
 
 // RenameConfig renames a config and its backing file.
@@ -174,6 +323,27 @@ func (m *Manager) RenameConfig(oldName, newName string) error {
 		os.Remove(oldPath)
 	}
 	return nil
+}
+
+// FindOption looks up a specific Config, Command, and Option by name. Returns
+// nil values if any level of the hierarchy is not found.
+func (m *Manager) FindOption(configName, commandName, optionName string) (*Config, *Command, *Option) {
+	cfg := m.GetConfig(configName)
+	if cfg == nil {
+		return nil, nil, nil
+	}
+	for i := range cfg.Commands {
+		if cfg.Commands[i].Name == commandName {
+			cmd := &cfg.Commands[i]
+			for j := range cmd.Options {
+				if cmd.Options[j].Name == optionName {
+					return cfg, cmd, &cmd.Options[j]
+				}
+			}
+			return nil, nil, nil
+		}
+	}
+	return nil, nil, nil
 }
 
 // sanitizeName converts a config name to a safe filename stem.

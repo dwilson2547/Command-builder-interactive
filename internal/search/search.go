@@ -123,6 +123,12 @@ func scoreMatch(query string, cfg *config.Config, cmd *config.Command, opt *conf
 	cmdDesc := strings.ToLower(cmd.Description)
 	cfgName := strings.ToLower(cfg.Name)
 
+	// Build a lower-cased list of tags for this option.
+	var optTags []string
+	for _, t := range opt.Tags {
+		optTags = append(optTags, strings.ToLower(t))
+	}
+
 	for _, term := range terms {
 		termScore := 0
 
@@ -155,9 +161,29 @@ func scoreMatch(query string, cfg *config.Config, cmd *config.Command, opt *conf
 			termScore += 5
 		}
 
+		// Tag matches – exact tag match scores like an option name match.
+		for _, tag := range optTags {
+			if tag == term {
+				termScore += 80
+				break
+			} else if strings.HasPrefix(tag, term) {
+				termScore += 50
+				break
+			} else if strings.Contains(tag, term) {
+				termScore += 25
+				break
+			}
+		}
+
 		// Fuzzy: each rune of the term must appear in order somewhere.
 		if termScore == 0 {
-			if fuzzyContains(optDesc+" "+cmdName+" "+optName, term) {
+			// Include tags in fuzzy corpus.
+			tagCorpus := strings.Join(optTags, " ")
+			fuzzyCorpus := optDesc + " " + cmdName + " " + optName
+			if tagCorpus != "" {
+				fuzzyCorpus += " " + tagCorpus
+			}
+			if fuzzyContains(fuzzyCorpus, term) {
 				termScore += 5
 			}
 		}

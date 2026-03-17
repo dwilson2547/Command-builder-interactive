@@ -1,0 +1,428 @@
+name: "docker-compose"
+description: "Docker Compose multi-container orchestration: lifecycle, inspect, build, exec"
+version: "1.0.0"
+commands:
+  - name: "lifecycle"
+    description: "Start, stop, and manage the full application lifecycle"
+    options:
+      - name: "up"
+        description: "Build, create, and start containers (foreground)"
+        template: "docker compose{{file}}{{project}} up{{build}}{{force_recreate}}{{remove_orphans}}{{scale}}{{service}}"
+        tags: ["start services", "launch app", "compose up"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "One or more service names to start (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path, e.g. -f docker-compose.prod.yml (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override, e.g. -p myproject (leave blank to use directory name)"
+            required: false
+          - name: "build"
+            type: "flag"
+            description: "Build images before starting containers (--build)"
+            required: false
+            default: " --build"
+          - name: "force_recreate"
+            type: "flag"
+            description: "Recreate containers even if config hasn't changed (--force-recreate)"
+            required: false
+            default: " --force-recreate"
+          - name: "remove_orphans"
+            type: "flag"
+            description: "Remove containers for services not defined in the Compose file (--remove-orphans)"
+            required: false
+            default: " --remove-orphans"
+          - name: "scale"
+            type: "string"
+            description: "Scale a service, e.g. --scale worker=3 (leave blank to skip)"
+            required: false
+
+      - name: "up-detached"
+        description: "Build, create, and start containers in the background"
+        template: "docker compose{{file}}{{project}} up -d{{build}}{{force_recreate}}{{remove_orphans}}{{scale}}{{service}}"
+        tags: ["start background", "detached", "compose up -d"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "One or more service names to start (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path, e.g. -f docker-compose.prod.yml (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override, e.g. -p myproject (leave blank to use directory name)"
+            required: false
+          - name: "build"
+            type: "flag"
+            description: "Build images before starting containers (--build)"
+            required: false
+            default: " --build"
+          - name: "force_recreate"
+            type: "flag"
+            description: "Recreate containers even if config hasn't changed (--force-recreate)"
+            required: false
+            default: " --force-recreate"
+          - name: "remove_orphans"
+            type: "flag"
+            description: "Remove containers for services not in the Compose file (--remove-orphans)"
+            required: false
+            default: " --remove-orphans"
+          - name: "scale"
+            type: "string"
+            description: "Scale a service, e.g. --scale worker=3 (leave blank to skip)"
+            required: false
+
+      - name: "down"
+        description: "Stop and remove containers, networks, and optionally volumes and images"
+        template: "docker compose{{file}}{{project}} down{{volumes}}{{rmi}}{{remove_orphans}}"
+        tags: ["stop and remove", "tear down", "compose down"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Compose file path, e.g. -f docker-compose.prod.yml (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override, e.g. -p myproject (leave blank to use directory name)"
+            required: false
+          - name: "volumes"
+            type: "flag"
+            description: "Remove named volumes declared in the Compose file (-v)"
+            required: false
+            default: " -v"
+          - name: "rmi"
+            type: "string"
+            description: "Remove images: --rmi all or --rmi local (leave blank to skip)"
+            required: false
+          - name: "remove_orphans"
+            type: "flag"
+            description: "Remove containers for services not in the Compose file (--remove-orphans)"
+            required: false
+            default: " --remove-orphans"
+
+      - name: "start"
+        description: "Start existing stopped containers without recreating them"
+        template: "docker compose{{file}}{{project}} start{{service}}"
+        tags: ["resume containers", "start stopped"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "One or more service names to start (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+
+      - name: "stop"
+        description: "Stop running containers without removing them"
+        template: "docker compose{{file}}{{project}} stop{{timeout}}{{service}}"
+        tags: ["halt containers", "pause services"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "One or more service names to stop (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "timeout"
+            type: "string"
+            description: "Shutdown timeout in seconds, e.g. -t 30 (leave blank for default 10s)"
+            required: false
+
+      - name: "restart"
+        description: "Restart one or more services"
+        template: "docker compose{{file}}{{project}} restart{{timeout}}{{service}}"
+        tags: ["bounce services", "reload containers"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "One or more service names to restart (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "timeout"
+            type: "string"
+            description: "Shutdown timeout in seconds, e.g. -t 30 (leave blank for default 10s)"
+            required: false
+
+  - name: "inspect"
+    description: "Inspect running services, logs, and configuration"
+    options:
+      - name: "ps"
+        description: "List containers for the Compose project"
+        template: "docker compose{{file}}{{project}} ps{{all}}{{service}}"
+        tags: ["list compose containers", "service status", "compose ps"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Filter to a specific service name (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "all"
+            type: "flag"
+            description: "Show all stopped containers as well (-a)"
+            required: false
+            default: " -a"
+
+      - name: "logs"
+        description: "View output from service containers"
+        template: "docker compose{{file}}{{project}} logs{{follow}}{{tail}}{{timestamps}}{{service}}"
+        tags: ["service logs", "container output", "stdout stderr"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name to filter logs (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "follow"
+            type: "flag"
+            description: "Stream logs in real time (-f)"
+            required: false
+            default: " -f"
+          - name: "tail"
+            type: "string"
+            description: "Number of recent lines to show, e.g. --tail 100 (leave blank for all)"
+            required: false
+          - name: "timestamps"
+            type: "flag"
+            description: "Show timestamps (-t)"
+            required: false
+            default: " -t"
+
+      - name: "top"
+        description: "Display running processes in service containers"
+        template: "docker compose{{file}}{{project}} top{{service}}"
+        tags: ["container processes", "service processes"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+
+      - name: "config"
+        description: "Validate and print the resolved Compose configuration"
+        template: "docker compose{{file}}{{project}} config{{quiet}}{{services}}{{volumes}}"
+        tags: ["show config", "validate compose", "resolved config"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "quiet"
+            type: "flag"
+            description: "Only validate config without printing it (-q)"
+            required: false
+            default: " -q"
+          - name: "services"
+            type: "flag"
+            description: "Print service names only (--services)"
+            required: false
+            default: " --services"
+          - name: "volumes"
+            type: "flag"
+            description: "Print volume names only (--volumes)"
+            required: false
+            default: " --volumes"
+
+  - name: "build"
+    description: "Build or pull service images"
+    options:
+      - name: "build"
+        description: "Build or rebuild service images"
+        template: "docker compose{{file}}{{project}} build{{no_cache}}{{pull}}{{build_arg}}{{service}}"
+        tags: ["build images", "rebuild", "compose build"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "One or more service names to build (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "no_cache"
+            type: "flag"
+            description: "Do not use cache when building images (--no-cache)"
+            required: false
+            default: " --no-cache"
+          - name: "pull"
+            type: "flag"
+            description: "Always attempt to pull a newer version of the base image (--pull)"
+            required: false
+            default: " --pull"
+          - name: "build_arg"
+            type: "string"
+            description: "Set a build-time variable, e.g. --build-arg VERSION=1.2 (leave blank to skip)"
+            required: false
+
+      - name: "pull"
+        description: "Pull images for services without building"
+        template: "docker compose{{file}}{{project}} pull{{ignore_pull_failures}}{{quiet}}{{service}}"
+        tags: ["download images", "fetch images", "compose pull"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "One or more service names to pull (leave blank for all)"
+            required: false
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "ignore_pull_failures"
+            type: "flag"
+            description: "Continue pulling even if some images fail (--ignore-pull-failures)"
+            required: false
+            default: " --ignore-pull-failures"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress pull output (-q)"
+            required: false
+            default: " -q"
+
+  - name: "exec"
+    description: "Run commands inside service containers"
+    options:
+      - name: "exec"
+        description: "Execute a command in a running service container"
+        template: "docker compose{{file}}{{project}} exec{{user}}{{env}} {{service}} {{command}}"
+        tags: ["shell into service", "run in container", "compose exec"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "command"
+            type: "string"
+            description: "Command to execute inside the container"
+            required: true
+            default: "/bin/bash"
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "user"
+            type: "string"
+            description: "Run as a specific user, e.g. -u root (leave blank for default)"
+            required: false
+          - name: "env"
+            type: "string"
+            description: "Set an environment variable, e.g. -e DEBUG=1 (leave blank to skip)"
+            required: false
+
+      - name: "run"
+        description: "Run a one-off command on a service (creates a new container)"
+        template: "docker compose{{file}}{{project}} run{{rm}}{{no_deps}}{{user}}{{env}}{{port}} {{service}} {{command}}"
+        tags: ["one-off task", "run command", "compose run"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name to run the command against"
+            required: true
+            sub_command: "docker compose config --services 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "command"
+            type: "string"
+            description: "Command and arguments to run"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "Compose file path (leave blank for default)"
+            required: false
+          - name: "project"
+            type: "string"
+            description: "Project name override (leave blank to use directory name)"
+            required: false
+          - name: "rm"
+            type: "flag"
+            description: "Automatically remove the container after it exits (--rm)"
+            required: false
+            default: " --rm"
+          - name: "no_deps"
+            type: "flag"
+            description: "Do not start linked services (--no-deps)"
+            required: false
+            default: " --no-deps"
+          - name: "user"
+            type: "string"
+            description: "Run as a specific user, e.g. -u root (leave blank for default)"
+            required: false
+          - name: "env"
+            type: "string"
+            description: "Set an environment variable, e.g. -e KEY=value (leave blank to skip)"
+            required: false
+          - name: "port"
+            type: "string"
+            description: "Publish a port, e.g. -p 8080:80 (leave blank to skip)"
+            required: false

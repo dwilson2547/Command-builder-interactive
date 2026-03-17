@@ -1,0 +1,166 @@
+name: "tar"
+description: "Archive creation and extraction: create, extract, inspect"
+version: "1.0.0"
+commands:
+  - name: "create"
+    description: "Create a new archive"
+    options:
+      - name: "create-gzip"
+        description: "Create a gzip-compressed tar archive (.tar.gz)"
+        template: "tar -czf{{verbose}} {{archive}} {{source}}"
+        tags: ["create tar.gz", "gzip archive", "compress directory"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Output archive file path, e.g. backup.tar.gz"
+            required: true
+          - name: "source"
+            type: "string"
+            description: "File or directory to archive"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "List files as they are added (-v)"
+            required: false
+            default: "v"
+
+      - name: "create-bzip2"
+        description: "Create a bzip2-compressed tar archive (.tar.bz2)"
+        template: "tar -cjf{{verbose}} {{archive}} {{source}}"
+        tags: ["create tar.bz2", "bzip2 archive", "compress bzip"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Output archive file path, e.g. backup.tar.bz2"
+            required: true
+          - name: "source"
+            type: "string"
+            description: "File or directory to archive"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "List files as they are added (-v)"
+            required: false
+            default: "v"
+
+      - name: "create-xz"
+        description: "Create an xz-compressed tar archive (.tar.xz)"
+        template: "tar -cJf{{verbose}} {{archive}} {{source}}"
+        tags: ["create tar.xz", "xz archive", "compress xz"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Output archive file path, e.g. backup.tar.xz"
+            required: true
+          - name: "source"
+            type: "string"
+            description: "File or directory to archive"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "List files as they are added (-v)"
+            required: false
+            default: "v"
+
+      - name: "create-uncompressed"
+        description: "Create an uncompressed tar archive (.tar)"
+        template: "tar -cf{{verbose}} {{archive}} {{source}}"
+        tags: ["create tar", "uncompressed archive", "plain tar"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Output archive file path, e.g. backup.tar"
+            required: true
+          - name: "source"
+            type: "string"
+            description: "File or directory to archive"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "List files as they are added (-v)"
+            required: false
+            default: "v"
+
+  - name: "extract"
+    description: "Extract files from an archive"
+    options:
+      - name: "extract"
+        description: "Extract an archive to the current directory (auto-detects compression)"
+        template: "tar -xf{{verbose}} {{archive}}"
+        tags: ["extract archive", "decompress", "untar"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Archive file to extract, e.g. backup.tar.gz"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "List files as they are extracted (-v)"
+            required: false
+            default: "v"
+
+      - name: "extract-to-dir"
+        description: "Extract an archive into a specific directory"
+        template: "tar -xf{{verbose}} {{archive}} -C {{directory}}"
+        tags: ["extract to directory", "decompress to path", "untar to dir"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Archive file to extract"
+            required: true
+          - name: "directory"
+            type: "string"
+            description: "Target directory (must already exist)"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "List files as they are extracted (-v)"
+            required: false
+            default: "v"
+
+      - name: "extract-single-file"
+        description: "Extract a single file from an archive"
+        template: "tar -xf{{verbose}} {{archive}} {{file}}"
+        tags: ["extract one file", "single file extract", "partial extract"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Archive file"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "Path of the file inside the archive to extract"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Show the extracted file (-v)"
+            required: false
+            default: "v"
+
+  - name: "inspect"
+    description: "Inspect archive contents without extracting"
+    options:
+      - name: "list-contents"
+        description: "List all files inside an archive"
+        template: "tar -tf{{verbose}} {{archive}}"
+        tags: ["list archive", "view contents", "tar contents"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Archive file to inspect"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Show detailed file info (-v)"
+            required: false
+            default: "v"
+
+      - name: "test-archive"
+        description: "Test an archive for integrity without extracting"
+        template: "tar -tf {{archive}} > /dev/null && echo 'Archive OK' || echo 'Archive is corrupt'"
+        tags: ["test archive", "verify archive", "integrity check"]
+        inputs:
+          - name: "archive"
+            type: "string"
+            description: "Archive file to test"
+            required: true

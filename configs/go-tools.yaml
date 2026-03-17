@@ -1,0 +1,481 @@
+name: "go"
+description: "Go toolchain: build, test, modules, format, vet, generate, doc, profiling"
+version: "1.0.0"
+commands:
+  - name: "run"
+    description: "Compile and run Go programs"
+    options:
+      - name: "run"
+        description: "Compile and run a Go program"
+        template: "go run{{race}} {{file_or_package}} {{args}}"
+        tags: ["execute", "run program", "go run"]
+        inputs:
+          - name: "file_or_package"
+            type: "string"
+            description: "File(s) or package path, e.g. main.go or ./cmd/server"
+            required: true
+            default: "."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "args"
+            type: "string"
+            description: "Arguments to pass to the program (leave blank to skip)"
+            required: false
+          - name: "race"
+            type: "flag"
+            description: "Enable the race detector (-race)"
+            required: false
+            default: " -race"
+
+  - name: "build"
+    description: "Compile packages and binaries"
+    options:
+      - name: "build"
+        description: "Compile a package into a binary"
+        template: "go build{{race}}{{verbose}} {{output}} {{package}}"
+        tags: ["compile", "binary", "go build"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package to build, e.g. ./cmd/server or . for current"
+            required: true
+            default: "."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "output"
+            type: "string"
+            description: "Output binary name/path, e.g. -o ./bin/myapp (leave blank for default)"
+            required: false
+          - name: "race"
+            type: "flag"
+            description: "Enable the race detector (-race)"
+            required: false
+            default: " -race"
+          - name: "verbose"
+            type: "flag"
+            description: "Print the names of compiled packages (-v)"
+            required: false
+            default: " -v"
+
+      - name: "build-all"
+        description: "Build all packages in the module"
+        template: "go build{{race}}{{verbose}} ./..."
+        tags: ["compile all", "check all packages"]
+        inputs:
+          - name: "race"
+            type: "flag"
+            description: "Enable the race detector (-race)"
+            required: false
+            default: " -race"
+          - name: "verbose"
+            type: "flag"
+            description: "Print the names of compiled packages (-v)"
+            required: false
+            default: " -v"
+
+      - name: "install"
+        description: "Compile and install a binary to $GOPATH/bin"
+        template: "go install {{package}}"
+        tags: ["install binary", "gopath bin", "global install"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path with version, e.g. ./cmd/tool or github.com/user/tool@latest"
+            required: true
+            default: "."
+
+      - name: "clean"
+        description: "Remove build cache and object files"
+        template: "go clean{{build_cache}}{{test_cache}}{{mod_cache}}"
+        tags: ["clear cache", "remove artifacts", "wipe build"]
+        inputs:
+          - name: "build_cache"
+            type: "flag"
+            description: "Remove the build cache (-cache)"
+            required: false
+            default: " -cache"
+          - name: "test_cache"
+            type: "flag"
+            description: "Remove cached test results (-testcache)"
+            required: false
+            default: " -testcache"
+          - name: "mod_cache"
+            type: "flag"
+            description: "Remove the module download cache (-modcache)"
+            required: false
+            default: " -modcache"
+
+  - name: "test"
+    description: "Run tests and benchmarks"
+    options:
+      - name: "test"
+        description: "Run tests for a package"
+        template: "go test{{race}}{{verbose}}{{short}} {{package}}"
+        tags: ["unit test", "go test", "run tests"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path, e.g. ./... for all or ./internal/auth"
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "race"
+            type: "flag"
+            description: "Enable the race detector (-race)"
+            required: false
+            default: " -race"
+          - name: "verbose"
+            type: "flag"
+            description: "Print test name and result for each test (-v)"
+            required: false
+            default: " -v"
+          - name: "short"
+            type: "flag"
+            description: "Skip long-running tests (-short)"
+            required: false
+            default: " -short"
+
+      - name: "test-run"
+        description: "Run tests matching a name pattern"
+        template: "go test{{race}}{{verbose}} -run {{pattern}} {{package}}"
+        tags: ["specific test", "filter tests", "-run"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Regex pattern matching test function names, e.g. TestAuth or ^TestUser"
+            required: true
+          - name: "package"
+            type: "string"
+            description: "Package path"
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "race"
+            type: "flag"
+            description: "Enable the race detector (-race)"
+            required: false
+            default: " -race"
+          - name: "verbose"
+            type: "flag"
+            description: "Verbose output (-v)"
+            required: false
+            default: " -v"
+
+      - name: "test-coverage"
+        description: "Run tests and display a coverage summary"
+        template: "go test -coverprofile={{cover_file}} -covermode={{mode}} {{package}} && go tool cover -func={{cover_file}}"
+        tags: ["coverage", "test coverage", "cover profile"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path, e.g. ./..."
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "cover_file"
+            type: "file"
+            description: "Output file for coverage profile"
+            required: true
+            default: "coverage.out"
+          - name: "mode"
+            type: "string"
+            description: "Coverage mode: set, count, or atomic"
+            required: true
+            default: "atomic"
+
+      - name: "test-coverage-html"
+        description: "Run tests and open an HTML coverage report in the browser"
+        template: "go test -coverprofile={{cover_file}} {{package}} && go tool cover -html={{cover_file}}"
+        tags: ["coverage report", "html coverage", "visual coverage"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path, e.g. ./..."
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "cover_file"
+            type: "file"
+            description: "Coverage profile file"
+            required: true
+            default: "coverage.out"
+
+      - name: "benchmark"
+        description: "Run benchmarks for a package"
+        template: "go test -bench={{pattern}} -benchmem{{benchtime}} {{package}}"
+        tags: ["perf", "performance", "bench", "go bench"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Benchmark pattern, e.g. . for all or BenchmarkParse"
+            required: true
+            default: "."
+          - name: "package"
+            type: "string"
+            description: "Package path"
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "benchtime"
+            type: "string"
+            description: "Run duration, e.g. -benchtime=5s (leave blank for default 1s)"
+            required: false
+
+      - name: "test-count"
+        description: "Run tests a specific number of times (disables result caching)"
+        template: "go test -count={{count}}{{race}} {{package}}"
+        tags: ["disable cache", "repeat tests", "flaky tests"]
+        inputs:
+          - name: "count"
+            type: "string"
+            description: "Number of times to run each test"
+            required: true
+            default: "1"
+          - name: "package"
+            type: "string"
+            description: "Package path"
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "race"
+            type: "flag"
+            description: "Enable the race detector (-race)"
+            required: false
+            default: " -race"
+
+  - name: "modules"
+    description: "Manage Go modules and dependencies"
+    options:
+      - name: "init"
+        description: "Initialise a new Go module"
+        template: "go mod init {{module_path}}"
+        tags: ["new module", "go mod init", "module name"]
+        inputs:
+          - name: "module_path"
+            type: "string"
+            description: "Module path, e.g. github.com/user/myproject"
+            required: true
+
+      - name: "tidy"
+        description: "Add missing and remove unused module requirements"
+        template: "go mod tidy{{verbose}}"
+        tags: ["clean deps", "prune modules", "go mod tidy"]
+        inputs:
+          - name: "verbose"
+            type: "flag"
+            description: "Print information about removed modules (-v)"
+            required: false
+            default: " -v"
+
+      - name: "get"
+        description: "Add or update a dependency"
+        template: "go get {{package}}"
+        tags: ["add dependency", "update dep", "go get"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path with optional version, e.g. github.com/pkg/errors@v0.9.1 or @latest"
+            required: true
+
+      - name: "get-latest"
+        description: "Upgrade a dependency to its latest version"
+        template: "go get {{module}}@latest"
+        tags: ["upgrade dep", "latest version"]
+        inputs:
+          - name: "module"
+            type: "string"
+            description: "Module path, e.g. github.com/spf13/cobra"
+            required: true
+            sub_command: "go list -m all 2>/dev/null | tail -n +2 | awk '{print $1\",\"$1\" \"$2}'"
+
+      - name: "download"
+        description: "Download all module dependencies to the local cache"
+        template: "go mod download{{verbose}}"
+        tags: ["cache deps", "offline prep", "prefetch"]
+        inputs:
+          - name: "verbose"
+            type: "flag"
+            description: "Print progress (-x)"
+            required: false
+            default: " -x"
+
+      - name: "vendor"
+        description: "Copy dependencies into a vendor directory"
+        template: "go mod vendor{{verbose}}"
+        tags: ["vendoring", "offline build", "vendor dir"]
+        inputs:
+          - name: "verbose"
+            type: "flag"
+            description: "Print vendored packages (-v)"
+            required: false
+            default: " -v"
+
+      - name: "graph"
+        description: "Print the module dependency graph"
+        template: "go mod graph"
+        tags: ["dependency graph", "module graph"]
+        inputs: []
+
+      - name: "why"
+        description: "Explain why a module or package is needed"
+        template: "go mod why {{module}}"
+        tags: ["dependency reason", "why needed", "module explain"]
+        inputs:
+          - name: "module"
+            type: "string"
+            description: "Module or package path to explain"
+            required: true
+            sub_command: "go list -m all 2>/dev/null | tail -n +2 | awk '{print $1\",\"$1\" \"$2}'"
+
+      - name: "list-modules"
+        description: "List all module dependencies"
+        template: "go list -m{{all}}{{json}} {{modules}}"
+        tags: ["show deps", "list modules", "go list -m"]
+        inputs:
+          - name: "modules"
+            type: "string"
+            description: "Module pattern to list, e.g. all (leave blank for current module only)"
+            required: false
+            default: "all"
+          - name: "all"
+            type: "flag"
+            description: "Include indirect dependencies (-all)"
+            required: false
+            default: " -all"
+          - name: "json"
+            type: "flag"
+            description: "JSON output (-json)"
+            required: false
+            default: " -json"
+
+  - name: "quality"
+    description: "Format, vet and analyse code"
+    options:
+      - name: "fmt"
+        description: "Format Go source files"
+        template: "go fmt {{package}}"
+        tags: ["format", "gofmt", "code style"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path, e.g. ./... for all"
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "vet"
+        description: "Report likely mistakes in Go source code"
+        template: "go vet {{package}}"
+        tags: ["lint", "static analysis", "suspicious code"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path, e.g. ./..."
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "generate"
+        description: "Run go:generate directives in source files"
+        template: "go generate{{verbose}}{{run_pattern}} {{package}}"
+        tags: ["code generation", "go generate", "stringer", "mockgen"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package path, e.g. ./..."
+            required: true
+            default: "./..."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "verbose"
+            type: "flag"
+            description: "Print commands as they are executed (-v)"
+            required: false
+            default: " -v"
+          - name: "run_pattern"
+            type: "string"
+            description: "Only run generators matching a pattern, e.g. -run mockgen (leave blank for all)"
+            required: false
+
+  - name: "doc"
+    description: "Browse and serve Go documentation"
+    options:
+      - name: "doc"
+        description: "Show documentation for a package or symbol"
+        template: "go doc{{all}}{{unexported}} {{symbol}}"
+        tags: ["docs", "godoc", "package docs", "symbol docs"]
+        inputs:
+          - name: "symbol"
+            type: "string"
+            description: "Package or symbol, e.g. fmt, fmt.Println, or ./internal/auth"
+            required: true
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "all"
+            type: "flag"
+            description: "Show all documentation including unexported (-all)"
+            required: false
+            default: " -all"
+          - name: "unexported"
+            type: "flag"
+            description: "Show unexported symbols too (-u)"
+            required: false
+            default: " -u"
+
+      - name: "godoc-server"
+        description: "Start a local godoc HTTP server"
+        template: "godoc -http={{address}}"
+        tags: ["doc server", "local docs", "browse docs"]
+        inputs:
+          - name: "address"
+            type: "string"
+            description: "Address and port to listen on"
+            required: true
+            default: "localhost:6060"
+
+  - name: "profiling"
+    description: "Profile CPU, memory and traces"
+    options:
+      - name: "test-cpu-profile"
+        description: "Run tests and capture a CPU profile"
+        template: "go test -cpuprofile={{profile_file}} {{package}}"
+        tags: ["cpu profile", "pprof", "performance"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package to profile"
+            required: true
+            default: "."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "profile_file"
+            type: "file"
+            description: "Output file for the CPU profile"
+            required: true
+            default: "cpu.prof"
+
+      - name: "test-mem-profile"
+        description: "Run tests and capture a memory profile"
+        template: "go test -memprofile={{profile_file}} {{package}}"
+        tags: ["memory profile", "pprof", "heap", "allocs"]
+        inputs:
+          - name: "package"
+            type: "string"
+            description: "Package to profile"
+            required: true
+            default: "."
+            sub_command: "go list ./... 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "profile_file"
+            type: "file"
+            description: "Output file for the memory profile"
+            required: true
+            default: "mem.prof"
+
+      - name: "pprof"
+        description: "Analyse a pprof profile interactively"
+        template: "go tool pprof {{http_flag}} {{profile_file}}"
+        tags: ["analyse profile", "pprof interactive", "flame graph"]
+        inputs:
+          - name: "profile_file"
+            type: "file"
+            description: "Profile file to analyse (cpu.prof, mem.prof, etc.)"
+            required: true
+          - name: "http_flag"
+            type: "string"
+            description: "Serve a browser UI, e.g. -http=localhost:8080 (leave blank for CLI mode)"
+            required: false

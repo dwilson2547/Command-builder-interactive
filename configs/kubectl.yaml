@@ -1,0 +1,931 @@
+name: "kubectl"
+description: "Kubernetes CLI: pods, deployments, services, config, manifests, nodes, secrets, configmaps"
+version: "1.0.0"
+commands:
+  - name: "pods"
+    description: "Inspect and interact with pods"
+    options:
+      - name: "get"
+        description: "List pods in a namespace"
+        template: "kubectl get pods{{namespace}}{{all_namespaces}}{{watch}}{{output}}"
+        tags: ["list pods", "ps", "running containers"]
+        inputs:
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production (leave blank for current context default)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "all_namespaces"
+            type: "flag"
+            description: "Show pods across all namespaces (-A)"
+            required: false
+            default: " -A"
+          - name: "watch"
+            type: "flag"
+            description: "Watch for changes (-w)"
+            required: false
+            default: " -w"
+          - name: "output"
+            type: "flag"
+            description: "Wide output with node/IP info (-o wide)"
+            required: false
+            default: " -o wide"
+
+      - name: "describe"
+        description: "Show detailed information about a pod"
+        template: "kubectl describe pod {{pod}}{{namespace}}"
+        tags: ["pod info", "inspect pod", "events"]
+        inputs:
+          - name: "pod"
+            type: "string"
+            description: "Pod name"
+            required: true
+            sub_command: "kubectl get pods --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production (leave blank for current context default)"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "logs"
+        description: "Print logs from a pod or container"
+        template: "kubectl logs{{follow}}{{previous}}{{tail}} {{pod}}{{container}}{{namespace}}"
+        tags: ["stdout", "container logs", "debug"]
+        inputs:
+          - name: "pod"
+            type: "string"
+            description: "Pod name"
+            required: true
+            sub_command: "kubectl get pods --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null"
+          - name: "container"
+            type: "string"
+            description: "Container name flag, e.g. -c sidecar (leave blank for the default container)"
+            required: false
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "follow"
+            type: "flag"
+            description: "Stream logs in real time (-f)"
+            required: false
+            default: " -f"
+          - name: "previous"
+            type: "flag"
+            description: "Print logs from the previously terminated container (-p)"
+            required: false
+            default: " -p"
+          - name: "tail"
+            type: "string"
+            description: "Number of recent lines to show, e.g. --tail=100 (leave blank for all)"
+            required: false
+
+      - name: "exec"
+        description: "Execute a command inside a running pod"
+        template: "kubectl exec -it {{pod}}{{container}}{{namespace}} -- {{command}}"
+        tags: ["shell", "bash", "debug", "interactive"]
+        inputs:
+          - name: "pod"
+            type: "string"
+            description: "Pod name"
+            required: true
+            sub_command: "kubectl get pods --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null"
+          - name: "command"
+            type: "string"
+            description: "Command to run inside the container"
+            required: true
+            default: "/bin/sh"
+          - name: "container"
+            type: "string"
+            description: "Container flag, e.g. -c sidecar (leave blank for default)"
+            required: false
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "port-forward"
+        description: "Forward a local port to a port on a pod"
+        template: "kubectl port-forward {{pod}} {{local_port}}:{{pod_port}}{{namespace}} {{address}}"
+        tags: ["tunnel", "proxy", "expose locally"]
+        inputs:
+          - name: "pod"
+            type: "string"
+            description: "Pod name (or svc/service-name for a service)"
+            required: true
+            sub_command: "kubectl get pods --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null"
+          - name: "local_port"
+            type: "string"
+            description: "Local port"
+            required: true
+            default: "8080"
+          - name: "pod_port"
+            type: "string"
+            description: "Pod port"
+            required: true
+            default: "80"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "address"
+            type: "string"
+            description: "Bind address flag, e.g. --address 0.0.0.0 (leave blank for 127.0.0.1)"
+            required: false
+
+      - name: "delete"
+        description: "Delete a pod"
+        template: "kubectl delete pod {{pod}}{{namespace}}{{force}}"
+        tags: ["kill pod", "remove pod", "restart pod"]
+        inputs:
+          - name: "pod"
+            type: "string"
+            description: "Pod name"
+            required: true
+            sub_command: "kubectl get pods --no-headers -o custom-columns=':metadata.name,:status.phase' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "force"
+            type: "flag"
+            description: "Force delete without graceful termination (--force --grace-period=0)"
+            required: false
+            default: " --force --grace-period=0"
+
+      - name: "top"
+        description: "Show CPU and memory usage for pods"
+        template: "kubectl top pods{{namespace}}{{all_namespaces}}{{sort_by}}"
+        tags: ["resource usage", "cpu", "memory", "metrics"]
+        inputs:
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "all_namespaces"
+            type: "flag"
+            description: "Show across all namespaces (-A)"
+            required: false
+            default: " -A"
+          - name: "sort_by"
+            type: "string"
+            description: "Sort by cpu or memory, e.g. --sort-by=memory (leave blank to skip)"
+            required: false
+
+  - name: "deployments"
+    description: "Manage deployments"
+    options:
+      - name: "get"
+        description: "List deployments"
+        template: "kubectl get deployments{{namespace}}{{all_namespaces}}{{output}}"
+        tags: ["list deployments", "deploy status"]
+        inputs:
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "all_namespaces"
+            type: "flag"
+            description: "Show across all namespaces (-A)"
+            required: false
+            default: " -A"
+          - name: "output"
+            type: "flag"
+            description: "Wide output (-o wide)"
+            required: false
+            default: " -o wide"
+
+      - name: "describe"
+        description: "Show detailed information about a deployment"
+        template: "kubectl describe deployment {{deployment}}{{namespace}}"
+        tags: ["deployment info", "replica set", "strategy"]
+        inputs:
+          - name: "deployment"
+            type: "string"
+            description: "Deployment name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "scale"
+        description: "Scale a deployment to a specified number of replicas"
+        template: "kubectl scale deployment {{deployment}} --replicas={{replicas}}{{namespace}}"
+        tags: ["replicas", "scale up", "scale down"]
+        inputs:
+          - name: "deployment"
+            type: "string"
+            description: "Deployment name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "replicas"
+            type: "string"
+            description: "Desired number of replicas"
+            required: true
+            default: "1"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "restart"
+        description: "Perform a rolling restart of a deployment"
+        template: "kubectl rollout restart deployment {{deployment}}{{namespace}}"
+        tags: ["redeploy", "rolling restart", "refresh pods"]
+        inputs:
+          - name: "deployment"
+            type: "string"
+            description: "Deployment name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "rollout-status"
+        description: "Watch the rollout status of a deployment"
+        template: "kubectl rollout status deployment {{deployment}}{{namespace}}"
+        tags: ["deploy progress", "watch rollout", "ready"]
+        inputs:
+          - name: "deployment"
+            type: "string"
+            description: "Deployment name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "rollout-history"
+        description: "View the rollout history of a deployment"
+        template: "kubectl rollout history deployment {{deployment}}{{namespace}}"
+        tags: ["revisions", "previous versions"]
+        inputs:
+          - name: "deployment"
+            type: "string"
+            description: "Deployment name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "rollout-undo"
+        description: "Roll back a deployment to a previous revision"
+        template: "kubectl rollout undo deployment {{deployment}}{{revision}}{{namespace}}"
+        tags: ["rollback", "revert deployment", "previous version"]
+        inputs:
+          - name: "deployment"
+            type: "string"
+            description: "Deployment name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "revision"
+            type: "string"
+            description: "Revision to roll back to, e.g. --to-revision=2 (leave blank for previous)"
+            required: false
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "set-image"
+        description: "Update the container image of a deployment"
+        template: "kubectl set image deployment/{{deployment}} {{container}}={{image}}{{namespace}}"
+        tags: ["update image", "new version", "deploy image"]
+        inputs:
+          - name: "deployment"
+            type: "string"
+            description: "Deployment name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "container"
+            type: "string"
+            description: "Container name within the deployment"
+            required: true
+          - name: "image"
+            type: "string"
+            description: "New image reference, e.g. nginx:1.25 or myrepo/app:v2.0"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+  - name: "services"
+    description: "Inspect and manage services"
+    options:
+      - name: "get"
+        description: "List services"
+        template: "kubectl get services{{namespace}}{{all_namespaces}}{{output}}"
+        tags: ["list svc", "endpoints", "cluster ip"]
+        inputs:
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "all_namespaces"
+            type: "flag"
+            description: "Show across all namespaces (-A)"
+            required: false
+            default: " -A"
+          - name: "output"
+            type: "flag"
+            description: "Wide output (-o wide)"
+            required: false
+            default: " -o wide"
+
+      - name: "describe"
+        description: "Show detailed information about a service"
+        template: "kubectl describe service {{service}}{{namespace}}"
+        tags: ["service info", "endpoints", "ports"]
+        inputs:
+          - name: "service"
+            type: "string"
+            description: "Service name"
+            required: true
+            sub_command: "kubectl get services --no-headers -o custom-columns=':metadata.name,:spec.type' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "expose"
+        description: "Expose a deployment or pod as a new service"
+        template: "kubectl expose {{resource_type}} {{resource_name}} --port={{port}}{{target_port}}{{type}}{{namespace}}"
+        tags: ["create service", "publish", "loadbalancer", "nodeport"]
+        inputs:
+          - name: "resource_type"
+            type: "string"
+            description: "Resource type to expose: deployment, pod, or replicaset"
+            required: true
+            default: "deployment"
+          - name: "resource_name"
+            type: "string"
+            description: "Resource name"
+            required: true
+            sub_command: "kubectl get deployments --no-headers -o custom-columns=':metadata.name,:status.readyReplicas' 2>/dev/null"
+          - name: "port"
+            type: "string"
+            description: "Port the service will listen on"
+            required: true
+            default: "80"
+          - name: "target_port"
+            type: "string"
+            description: "Target port on the pod, e.g. --target-port=8080 (leave blank if same as port)"
+            required: false
+          - name: "type"
+            type: "string"
+            description: "Service type, e.g. --type=LoadBalancer or --type=NodePort (leave blank for ClusterIP)"
+            required: false
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+  - name: "config"
+    description: "Manage kubeconfig contexts and namespaces"
+    options:
+      - name: "get-contexts"
+        description: "List all available kubeconfig contexts"
+        template: "kubectl config get-contexts"
+        tags: ["clusters", "contexts", "kubeconfig"]
+        inputs: []
+
+      - name: "current-context"
+        description: "Display the current kubeconfig context"
+        template: "kubectl config current-context"
+        tags: ["active context", "which cluster"]
+        inputs: []
+
+      - name: "use-context"
+        description: "Switch to a different kubeconfig context"
+        template: "kubectl config use-context {{context}}"
+        tags: ["switch cluster", "change context"]
+        inputs:
+          - name: "context"
+            type: "string"
+            description: "Context name to activate"
+            required: true
+            sub_command: "kubectl config get-contexts --no-headers -o name 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "set-namespace"
+        description: "Set the default namespace for the current context"
+        template: "kubectl config set-context --current --namespace={{namespace}}"
+        tags: ["default namespace", "switch namespace"]
+        inputs:
+          - name: "namespace"
+            type: "string"
+            description: "Namespace to set as default"
+            required: true
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "view"
+        description: "Display the full kubeconfig"
+        template: "kubectl config view{{minify}}"
+        tags: ["show kubeconfig", "clusters", "users"]
+        inputs:
+          - name: "minify"
+            type: "flag"
+            description: "Only show settings for the current context (--minify)"
+            required: false
+            default: " --minify"
+
+  - name: "manifests"
+    description: "Apply, delete and diff Kubernetes manifest files"
+    options:
+      - name: "apply"
+        description: "Apply a manifest file or directory"
+        template: "kubectl apply{{dry_run}}{{server_side}} -f {{manifest}}{{namespace}}"
+        tags: ["deploy", "create", "update resources"]
+        inputs:
+          - name: "manifest"
+            type: "file"
+            description: "Path to a YAML manifest file or directory"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "dry_run"
+            type: "flag"
+            description: "Dry run on the client — show what would be applied (--dry-run=client)"
+            required: false
+            default: " --dry-run=client"
+          - name: "server_side"
+            type: "flag"
+            description: "Server-side apply (--server-side)"
+            required: false
+            default: " --server-side"
+
+      - name: "delete-manifest"
+        description: "Delete resources defined in a manifest file"
+        template: "kubectl delete -f {{manifest}}{{namespace}}{{ignore_not_found}}"
+        tags: ["remove resources", "teardown", "undeploy"]
+        inputs:
+          - name: "manifest"
+            type: "file"
+            description: "Path to the manifest file or directory"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "ignore_not_found"
+            type: "flag"
+            description: "Do not error if resources are already gone (--ignore-not-found)"
+            required: false
+            default: " --ignore-not-found"
+
+      - name: "diff"
+        description: "Show the diff between a manifest and the live cluster state"
+        template: "kubectl diff -f {{manifest}}{{namespace}}"
+        tags: ["preview changes", "what will change"]
+        inputs:
+          - name: "manifest"
+            type: "file"
+            description: "Path to the manifest file or directory"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "kustomize-apply"
+        description: "Build and apply a Kustomize overlay"
+        template: "kubectl apply{{dry_run}} -k {{overlay_dir}}"
+        tags: ["kustomize", "overlay", "kustomization"]
+        inputs:
+          - name: "overlay_dir"
+            type: "dir"
+            description: "Path to the Kustomize overlay directory"
+            required: true
+          - name: "dry_run"
+            type: "flag"
+            description: "Dry run (--dry-run=client)"
+            required: false
+            default: " --dry-run=client"
+
+  - name: "nodes"
+    description: "Inspect and manage cluster nodes"
+    options:
+      - name: "get"
+        description: "List cluster nodes"
+        template: "kubectl get nodes{{output}}"
+        tags: ["cluster nodes", "worker nodes", "node status"]
+        inputs:
+          - name: "output"
+            type: "flag"
+            description: "Wide output with roles/OS/kernel info (-o wide)"
+            required: false
+            default: " -o wide"
+
+      - name: "describe"
+        description: "Show detailed information about a node"
+        template: "kubectl describe node {{node}}"
+        tags: ["node info", "capacity", "allocations", "taints"]
+        inputs:
+          - name: "node"
+            type: "string"
+            description: "Node name"
+            required: true
+            sub_command: "kubectl get nodes --no-headers -o custom-columns=':metadata.name,:status.conditions[-1].type' 2>/dev/null"
+
+      - name: "top"
+        description: "Show CPU and memory usage for nodes"
+        template: "kubectl top nodes"
+        tags: ["node resources", "cpu", "memory", "metrics"]
+        inputs: []
+
+      - name: "cordon"
+        description: "Mark a node as unschedulable"
+        template: "kubectl cordon {{node}}"
+        tags: ["maintenance", "no schedule", "disable node"]
+        inputs:
+          - name: "node"
+            type: "string"
+            description: "Node name"
+            required: true
+            sub_command: "kubectl get nodes --no-headers -o custom-columns=':metadata.name,:status.conditions[-1].type' 2>/dev/null"
+
+      - name: "uncordon"
+        description: "Mark a cordoned node as schedulable again"
+        template: "kubectl uncordon {{node}}"
+        tags: ["re-enable node", "allow scheduling"]
+        inputs:
+          - name: "node"
+            type: "string"
+            description: "Node name"
+            required: true
+            sub_command: "kubectl get nodes --no-headers -o custom-columns=':metadata.name,:status.conditions[-1].type' 2>/dev/null"
+
+      - name: "drain"
+        description: "Safely evict all pods from a node before maintenance"
+        template: "kubectl drain {{node}}{{ignore_daemonsets}}{{delete_emptydir}}{{force}}"
+        tags: ["evict pods", "maintenance window", "evacuate"]
+        inputs:
+          - name: "node"
+            type: "string"
+            description: "Node name"
+            required: true
+            sub_command: "kubectl get nodes --no-headers -o custom-columns=':metadata.name,:status.conditions[-1].type' 2>/dev/null"
+          - name: "ignore_daemonsets"
+            type: "flag"
+            description: "Ignore DaemonSet-managed pods (--ignore-daemonsets)"
+            required: false
+            default: " --ignore-daemonsets"
+          - name: "delete_emptydir"
+            type: "flag"
+            description: "Delete pods using emptyDir volumes (--delete-emptydir-data)"
+            required: false
+            default: " --delete-emptydir-data"
+          - name: "force"
+            type: "flag"
+            description: "Force eviction of pods not managed by a controller (--force)"
+            required: false
+            default: " --force"
+
+  - name: "secrets"
+    description: "Create and inspect Kubernetes secrets"
+    options:
+      - name: "get"
+        description: "List secrets in a namespace"
+        template: "kubectl get secrets{{namespace}}"
+        tags: ["list secrets", "credentials"]
+        inputs:
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "describe"
+        description: "Show metadata for a secret (values are not decoded)"
+        template: "kubectl describe secret {{secret}}{{namespace}}"
+        tags: ["secret info", "inspect secret"]
+        inputs:
+          - name: "secret"
+            type: "string"
+            description: "Secret name"
+            required: true
+            sub_command: "kubectl get secrets --no-headers -o custom-columns=':metadata.name,:type' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "create-generic"
+        description: "Create a generic secret from literal key/value pairs"
+        template: "kubectl create secret generic {{name}} {{literals}}{{namespace}}"
+        tags: ["new secret", "key value secret", "env secret"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Secret name"
+            required: true
+          - name: "literals"
+            type: "string"
+            description: "Key/value pairs, e.g. --from-literal=DB_PASS=secret --from-literal=API_KEY=abc"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "create-from-file"
+        description: "Create a secret from one or more files"
+        template: "kubectl create secret generic {{name}} --from-file={{file}}{{namespace}}"
+        tags: ["file secret", "tls cert", "ssh key"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Secret name"
+            required: true
+          - name: "file"
+            type: "file"
+            description: "File path (key=path for a custom key, or just path to use filename as key)"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "create-docker-registry"
+        description: "Create an image pull secret for a private container registry"
+        template: "kubectl create secret docker-registry {{name}} --docker-server={{server}} --docker-username={{username}} --docker-password={{password}}{{namespace}}"
+        tags: ["image pull secret", "registry auth", "docker login"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "Secret name"
+            required: true
+            default: "regcred"
+          - name: "server"
+            type: "string"
+            description: "Registry server hostname, e.g. registry.example.com"
+            required: true
+          - name: "username"
+            type: "string"
+            description: "Registry username"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Registry password or token"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "delete"
+        description: "Delete a secret"
+        template: "kubectl delete secret {{secret}}{{namespace}}"
+        tags: ["remove secret"]
+        inputs:
+          - name: "secret"
+            type: "string"
+            description: "Secret name"
+            required: true
+            sub_command: "kubectl get secrets --no-headers -o custom-columns=':metadata.name,:type' 2>/dev/null"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+  - name: "configmaps"
+    description: "Create and inspect ConfigMaps"
+    options:
+      - name: "get"
+        description: "List ConfigMaps in a namespace"
+        template: "kubectl get configmaps{{namespace}}"
+        tags: ["list cm", "configuration"]
+        inputs:
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "describe"
+        description: "Show the contents of a ConfigMap"
+        template: "kubectl describe configmap {{configmap}}{{namespace}}"
+        tags: ["cm contents", "config values"]
+        inputs:
+          - name: "configmap"
+            type: "string"
+            description: "ConfigMap name"
+            required: true
+            sub_command: "kubectl get configmaps --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "create-from-literal"
+        description: "Create a ConfigMap from literal key/value pairs"
+        template: "kubectl create configmap {{name}} {{literals}}{{namespace}}"
+        tags: ["new configmap", "key value config"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "ConfigMap name"
+            required: true
+          - name: "literals"
+            type: "string"
+            description: "Key/value pairs, e.g. --from-literal=ENV=prod --from-literal=LOG_LEVEL=info"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "create-from-file"
+        description: "Create a ConfigMap from a file or directory"
+        template: "kubectl create configmap {{name}} --from-file={{path}}{{namespace}}"
+        tags: ["file configmap", "config file"]
+        inputs:
+          - name: "name"
+            type: "string"
+            description: "ConfigMap name"
+            required: true
+          - name: "path"
+            type: "file"
+            description: "File or directory to load config from"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "delete"
+        description: "Delete a ConfigMap"
+        template: "kubectl delete configmap {{configmap}}{{namespace}}"
+        tags: ["remove configmap"]
+        inputs:
+          - name: "configmap"
+            type: "string"
+            description: "ConfigMap name"
+            required: true
+            sub_command: "kubectl get configmaps --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+  - name: "resources"
+    description: "Generic get, describe, delete, label and annotate for any resource type"
+    options:
+      - name: "get"
+        description: "Get any resource type by name"
+        template: "kubectl get {{resource_type}} {{name}}{{namespace}}{{output}}"
+        tags: ["generic get", "any resource", "inspect"]
+        inputs:
+          - name: "resource_type"
+            type: "string"
+            description: "Resource type, e.g. pod, deployment, ingress, pvc, job, cronjob, statefulset"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Resource name (leave blank to list all of this type)"
+            required: false
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "output"
+            type: "string"
+            description: "Output format, e.g. -o yaml or -o json (leave blank for table)"
+            required: false
+
+      - name: "describe"
+        description: "Describe any resource type by name"
+        template: "kubectl describe {{resource_type}} {{name}}{{namespace}}"
+        tags: ["generic describe", "any resource", "events"]
+        inputs:
+          - name: "resource_type"
+            type: "string"
+            description: "Resource type, e.g. ingress, pvc, statefulset, job"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Resource name"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "delete"
+        description: "Delete any resource by type and name"
+        template: "kubectl delete {{resource_type}} {{name}}{{namespace}}{{force}}"
+        tags: ["generic delete", "remove resource"]
+        inputs:
+          - name: "resource_type"
+            type: "string"
+            description: "Resource type, e.g. ingress, pvc, job"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Resource name"
+            required: true
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "force"
+            type: "flag"
+            description: "Force immediate deletion (--force --grace-period=0)"
+            required: false
+            default: " --force --grace-period=0"
+
+      - name: "label"
+        description: "Add or overwrite a label on a resource"
+        template: "kubectl label {{resource_type}} {{name}} {{label}}{{overwrite}}{{namespace}}"
+        tags: ["add label", "tag resource", "selector"]
+        inputs:
+          - name: "resource_type"
+            type: "string"
+            description: "Resource type, e.g. pod, node, deployment"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Resource name"
+            required: true
+          - name: "label"
+            type: "string"
+            description: "Label key=value to set, e.g. env=prod"
+            required: true
+          - name: "overwrite"
+            type: "flag"
+            description: "Overwrite an existing label value (--overwrite)"
+            required: false
+            default: " --overwrite"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"
+
+      - name: "annotate"
+        description: "Add or overwrite an annotation on a resource"
+        template: "kubectl annotate {{resource_type}} {{name}} {{annotation}}{{overwrite}}{{namespace}}"
+        tags: ["add annotation", "metadata"]
+        inputs:
+          - name: "resource_type"
+            type: "string"
+            description: "Resource type, e.g. pod, deployment, service"
+            required: true
+          - name: "name"
+            type: "string"
+            description: "Resource name"
+            required: true
+          - name: "annotation"
+            type: "string"
+            description: "Annotation key=value, e.g. kubernetes.io/change-cause='deploy v1.2'"
+            required: true
+          - name: "overwrite"
+            type: "flag"
+            description: "Overwrite an existing annotation (--overwrite)"
+            required: false
+            default: " --overwrite"
+          - name: "namespace"
+            type: "string"
+            description: "Namespace flag, e.g. -n production"
+            required: false
+            sub_command: "kubectl get namespaces --no-headers -o custom-columns=':metadata.name' 2>/dev/null | awk '{print $1\",\"$1}'"

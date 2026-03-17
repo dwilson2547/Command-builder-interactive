@@ -1,0 +1,281 @@
+name: "gpg"
+description: "GNU Privacy Guard encryption and signing: keys, encrypt, sign, keyring"
+version: "1.0.0"
+commands:
+  - name: "keys"
+    description: "Manage public and secret keys"
+    options:
+      - name: "list-public"
+        description: "List all public keys in the keyring"
+        template: "gpg --list-keys{{fingerprint}}{{keyid_format}}"
+        tags: ["list public keys", "gpg --list-keys", "keyring"]
+        inputs:
+          - name: "fingerprint"
+            type: "flag"
+            description: "Show key fingerprints (--fingerprint)"
+            required: false
+            default: " --fingerprint"
+          - name: "keyid_format"
+            type: "string"
+            description: "Key ID format, e.g. --keyid-format long (leave blank for default)"
+            required: false
+
+      - name: "list-secret"
+        description: "List all secret (private) keys"
+        template: "gpg --list-secret-keys{{fingerprint}}"
+        tags: ["list private keys", "gpg --list-secret-keys", "secret keys"]
+        inputs:
+          - name: "fingerprint"
+            type: "flag"
+            description: "Show fingerprints (--fingerprint)"
+            required: false
+            default: " --fingerprint"
+
+      - name: "import"
+        description: "Import a public or private key from a file"
+        template: "gpg --import {{key_file}}"
+        tags: ["import key", "gpg --import", "add key"]
+        inputs:
+          - name: "key_file"
+            type: "string"
+            description: "Path to the key file (.asc or .gpg)"
+            required: true
+
+      - name: "export"
+        description: "Export a public key to a file"
+        template: "gpg --export{{armor}} {{key_id}} > {{output}}"
+        tags: ["export key", "gpg --export", "share public key"]
+        inputs:
+          - name: "key_id"
+            type: "string"
+            description: "Key ID, fingerprint, or email address"
+            required: true
+            sub_command: "gpg --list-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+          - name: "output"
+            type: "string"
+            description: "Output file path, e.g. alice.pub.asc"
+            required: true
+          - name: "armor"
+            type: "flag"
+            description: "ASCII-armored output (-a)"
+            required: false
+            default: " -a"
+
+      - name: "delete-public"
+        description: "Delete a public key from the keyring"
+        template: "gpg --delete-keys {{key_id}}"
+        tags: ["delete public key", "remove key", "gpg --delete-keys"]
+        inputs:
+          - name: "key_id"
+            type: "string"
+            description: "Key ID, fingerprint, or email"
+            required: true
+            sub_command: "gpg --list-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+
+      - name: "delete-secret"
+        description: "Delete a secret key (and optionally the public key)"
+        template: "gpg --delete-secret-and-public-keys {{key_id}}"
+        tags: ["delete private key", "remove secret key"]
+        inputs:
+          - name: "key_id"
+            type: "string"
+            description: "Key ID, fingerprint, or email"
+            required: true
+            sub_command: "gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+
+      - name: "generate"
+        description: "Interactively generate a new GPG key pair"
+        template: "gpg --full-generate-key"
+        tags: ["generate key", "new key", "create gpg key", "gpg --gen-key"]
+
+      - name: "search-keyserver"
+        description: "Search for a key on a public keyserver"
+        template: "gpg --search-keys{{keyserver}} {{query}}"
+        tags: ["search keyserver", "find key online", "gpg --search-keys"]
+        inputs:
+          - name: "query"
+            type: "string"
+            description: "Email address, name, or key ID to search for"
+            required: true
+          - name: "keyserver"
+            type: "string"
+            description: "Keyserver URL, e.g. --keyserver hkps://keys.openpgp.org (leave blank for default)"
+            required: false
+
+  - name: "encrypt"
+    description: "Encrypt and decrypt files"
+    options:
+      - name: "encrypt-file"
+        description: "Encrypt a file for one or more recipients using their public key"
+        template: "gpg --encrypt{{armor}}{{recipient}} {{input}}"
+        tags: ["encrypt file", "gpg --encrypt", "public key encryption"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "File to encrypt"
+            required: true
+          - name: "recipient"
+            type: "string"
+            description: "Recipient's key ID or email, e.g. -r alice@example.com"
+            required: true
+            sub_command: "gpg --list-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+          - name: "armor"
+            type: "flag"
+            description: "Produce ASCII-armored output (-a)"
+            required: false
+            default: " -a"
+
+      - name: "encrypt-symmetric"
+        description: "Encrypt a file with a passphrase (symmetric encryption)"
+        template: "gpg --symmetric{{armor}}{{cipher}} {{input}}"
+        tags: ["symmetric encrypt", "gpg --symmetric", "passphrase encrypt"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "File to encrypt"
+            required: true
+          - name: "armor"
+            type: "flag"
+            description: "Produce ASCII-armored output (-a)"
+            required: false
+            default: " -a"
+          - name: "cipher"
+            type: "string"
+            description: "Cipher algorithm, e.g. --cipher-algo AES256 (leave blank for default)"
+            required: false
+
+      - name: "decrypt-file"
+        description: "Decrypt a GPG-encrypted file"
+        template: "gpg --decrypt{{output}} {{input}}"
+        tags: ["decrypt file", "gpg --decrypt", "gpg -d"]
+        inputs:
+          - name: "input"
+            type: "string"
+            description: "Encrypted file to decrypt (.gpg or .asc)"
+            required: true
+          - name: "output"
+            type: "string"
+            description: "Output file path, e.g. -o decrypted.txt (leave blank to print to stdout)"
+            required: false
+
+  - name: "sign"
+    description: "Sign and verify files and messages"
+    options:
+      - name: "sign-file"
+        description: "Create a detached signature for a file"
+        template: "gpg --detach-sign{{armor}}{{local_user}} {{file}}"
+        tags: ["sign file", "detached signature", "gpg --detach-sign"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "File to sign"
+            required: true
+          - name: "armor"
+            type: "flag"
+            description: "Produce ASCII-armored signature (-a)"
+            required: false
+            default: " -a"
+          - name: "local_user"
+            type: "string"
+            description: "Signing key ID or email, e.g. -u alice@example.com (leave blank for default key)"
+            required: false
+            sub_command: "gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+
+      - name: "clearsign"
+        description: "Create a clear-text signed message"
+        template: "gpg --clearsign{{local_user}} {{file}}"
+        tags: ["clearsign", "gpg --clearsign", "signed text"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "File to sign"
+            required: true
+          - name: "local_user"
+            type: "string"
+            description: "Signing key ID or email (leave blank for default key)"
+            required: false
+            sub_command: "gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+
+      - name: "verify"
+        description: "Verify a signature against a file"
+        template: "gpg --verify {{signature}} {{file}}"
+        tags: ["verify signature", "gpg --verify", "check signature"]
+        inputs:
+          - name: "signature"
+            type: "string"
+            description: "Signature file (.sig or .asc)"
+            required: true
+          - name: "file"
+            type: "string"
+            description: "Original file to verify against (leave blank if signature is inline)"
+            required: false
+
+      - name: "sign-and-encrypt"
+        description: "Sign and encrypt a file in one step"
+        template: "gpg --sign --encrypt{{armor}}{{recipient}}{{local_user}} {{file}}"
+        tags: ["sign and encrypt", "gpg sign encrypt", "authenticated encryption"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "File to sign and encrypt"
+            required: true
+          - name: "recipient"
+            type: "string"
+            description: "Recipient key ID or email, e.g. -r bob@example.com"
+            required: true
+            sub_command: "gpg --list-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+          - name: "armor"
+            type: "flag"
+            description: "Produce ASCII-armored output (-a)"
+            required: false
+            default: " -a"
+          - name: "local_user"
+            type: "string"
+            description: "Signing key (leave blank for default key)"
+            required: false
+            sub_command: "gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+
+  - name: "keyring"
+    description: "Inspect and manage key trust and metadata"
+    options:
+      - name: "fingerprint"
+        description: "Display the fingerprint of a key"
+        template: "gpg --fingerprint {{key_id}}"
+        tags: ["key fingerprint", "gpg --fingerprint", "verify key identity"]
+        inputs:
+          - name: "key_id"
+            type: "string"
+            description: "Key ID, email, or leave blank to show all"
+            required: false
+            sub_command: "gpg --list-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+
+      - name: "edit-key"
+        description: "Open the interactive key editing interface (trust, expire, sign, etc.)"
+        template: "gpg --edit-key {{key_id}}"
+        tags: ["edit key", "trust key", "gpg --edit-key", "sign key"]
+        inputs:
+          - name: "key_id"
+            type: "string"
+            description: "Key ID, fingerprint, or email to edit"
+            required: true
+            sub_command: "gpg --list-keys --with-colons 2>/dev/null | awk -F: '$1==\"uid\"{print $10\",\"$10}'"
+
+      - name: "export-ownertrust"
+        description: "Export the trust database to a file"
+        template: "gpg --export-ownertrust > {{output}}"
+        tags: ["export trust", "backup trust db", "ownertrust"]
+        inputs:
+          - name: "output"
+            type: "string"
+            description: "Output file path, e.g. ownertrust.txt"
+            required: true
+
+      - name: "import-ownertrust"
+        description: "Import trust settings from a previously exported file"
+        template: "gpg --import-ownertrust {{file}}"
+        tags: ["import trust", "restore trust db", "ownertrust"]
+        inputs:
+          - name: "file"
+            type: "string"
+            description: "Trust database file to import"
+            required: true

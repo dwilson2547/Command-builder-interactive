@@ -1,0 +1,282 @@
+name: "keytool"
+description: "Java keytool — keystore and certificate management"
+version: "1.0.0"
+commands:
+  - name: "keytool"
+    description: "Java keytool operations for keystores, certificates, and key pairs"
+    options:
+      - name: "list"
+        description: "List all entries in a keystore"
+        template: "keytool -list{{verbose}} -keystore {{keystore}} -storepass {{storepass}}{{storetype}}"
+        tags: ["inspect", "show", "contents", "aliases", "certificates"]
+        inputs:
+          - name: "keystore"
+            type: "file"
+            description: "Path to the keystore file"
+            required: true
+          - name: "storepass"
+            type: "string"
+            description: "Keystore password"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Verbose output — show full certificate details (-v)"
+            required: false
+            default: " -v"
+          - name: "storetype"
+            type: "string"
+            description: "Keystore type, e.g. -storetype PKCS12 (leave blank to auto-detect)"
+            required: false
+
+      - name: "generate-keypair"
+        description: "Generate a new key pair and self-signed certificate in a keystore"
+        template: "keytool -genkeypair -alias {{alias}} -keyalg {{keyalg}} -keysize {{keysize}} -validity {{validity}} -dname '{{dname}}' -keystore {{keystore}} -storepass {{storepass}} -keypass {{keypass}}{{storetype}}"
+        tags: ["genkey", "create key", "self-signed", "new certificate", "keypair"]
+        inputs:
+          - name: "alias"
+            type: "string"
+            description: "Alias name for the new entry"
+            required: true
+          - name: "keyalg"
+            type: "string"
+            description: "Key algorithm (RSA, EC, DSA)"
+            required: true
+            default: "RSA"
+          - name: "keysize"
+            type: "string"
+            description: "Key size in bits (e.g. 2048, 4096 for RSA; 256, 384 for EC)"
+            required: false
+            default: "2048"
+          - name: "validity"
+            type: "string"
+            description: "Validity period in days"
+            required: false
+            default: "365"
+          - name: "dname"
+            type: "string"
+            description: "Distinguished name, e.g. CN=example.com, OU=IT, O=Acme, L=City, ST=State, C=US"
+            required: true
+          - name: "keystore"
+            type: "file"
+            description: "Path to the keystore file (will be created if it does not exist)"
+            required: true
+          - name: "storepass"
+            type: "string"
+            description: "Keystore password"
+            required: true
+          - name: "keypass"
+            type: "string"
+            description: "Key entry password"
+            required: true
+          - name: "storetype"
+            type: "string"
+            description: "Keystore type, e.g. -storetype PKCS12 (leave blank for JKS)"
+            required: false
+
+      - name: "generate-csr"
+        description: "Generate a Certificate Signing Request (CSR) for an existing key pair"
+        template: "keytool -certreq -alias {{alias}} -keystore {{keystore}} -storepass {{storepass}} -keypass {{keypass}} -file {{csr_file}}{{sigalg}}"
+        tags: ["csr", "certificate request", "sign", "ca", "signing request"]
+        inputs:
+          - name: "alias"
+            type: "string"
+            description: "Alias of the key pair to use"
+            required: true
+          - name: "keystore"
+            type: "file"
+            description: "Path to the keystore file"
+            required: true
+          - name: "storepass"
+            type: "string"
+            description: "Keystore password"
+            required: true
+          - name: "keypass"
+            type: "string"
+            description: "Key entry password"
+            required: true
+          - name: "csr_file"
+            type: "file"
+            description: "Output CSR file path (e.g. request.csr)"
+            required: true
+            default: "request.csr"
+          - name: "sigalg"
+            type: "string"
+            description: "Signature algorithm, e.g. -sigalg SHA256withRSA (leave blank for default)"
+            required: false
+
+      - name: "import-cert"
+        description: "Import a certificate or certificate reply into a keystore"
+        template: "keytool -importcert -alias {{alias}} -file {{cert_file}} -keystore {{keystore}} -storepass {{storepass}}{{noprompt}}{{storetype}}"
+        tags: ["import", "install certificate", "trust", "CA cert", "certificate reply"]
+        inputs:
+          - name: "alias"
+            type: "string"
+            description: "Alias to assign to the imported certificate"
+            required: true
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate file to import (.cer, .pem, .crt)"
+            required: true
+          - name: "keystore"
+            type: "file"
+            description: "Target keystore file"
+            required: true
+          - name: "storepass"
+            type: "string"
+            description: "Keystore password"
+            required: true
+          - name: "noprompt"
+            type: "flag"
+            description: "Trust certificate without prompting (-noprompt)"
+            required: false
+            default: " -noprompt"
+          - name: "storetype"
+            type: "string"
+            description: "Keystore type, e.g. -storetype PKCS12 (leave blank for JKS)"
+            required: false
+
+      - name: "export-cert"
+        description: "Export a certificate from a keystore to a file"
+        template: "keytool -exportcert -alias {{alias}} -keystore {{keystore}} -storepass {{storepass}} -file {{output_file}}{{rfc}}{{storetype}}"
+        tags: ["export", "extract certificate", "save cert", "pem", "der"]
+        inputs:
+          - name: "alias"
+            type: "string"
+            description: "Alias of the certificate to export"
+            required: true
+          - name: "keystore"
+            type: "file"
+            description: "Source keystore file"
+            required: true
+          - name: "storepass"
+            type: "string"
+            description: "Keystore password"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output certificate file path (e.g. cert.cer)"
+            required: true
+            default: "cert.cer"
+          - name: "rfc"
+            type: "flag"
+            description: "Output in PEM (Base64/RFC) format instead of binary DER (-rfc)"
+            required: false
+            default: " -rfc"
+          - name: "storetype"
+            type: "string"
+            description: "Keystore type, e.g. -storetype PKCS12 (leave blank for JKS)"
+            required: false
+
+      - name: "import-keystore"
+        description: "Import all entries from one keystore into another (e.g. PKCS12 → JKS or vice versa)"
+        template: "keytool -importkeystore -srckeystore {{src_keystore}} -srcstoretype {{src_type}} -srcstorepass {{src_pass}} -destkeystore {{dest_keystore}} -deststoretype {{dest_type}} -deststorepass {{dest_pass}}{{noprompt}}"
+        tags: ["convert", "migrate", "pkcs12", "jks", "p12", "import keystore"]
+        inputs:
+          - name: "src_keystore"
+            type: "file"
+            description: "Source keystore file"
+            required: true
+          - name: "src_type"
+            type: "string"
+            description: "Source keystore type (PKCS12, JKS)"
+            required: true
+            default: "PKCS12"
+          - name: "src_pass"
+            type: "string"
+            description: "Source keystore password"
+            required: true
+          - name: "dest_keystore"
+            type: "file"
+            description: "Destination keystore file (will be created if it does not exist)"
+            required: true
+          - name: "dest_type"
+            type: "string"
+            description: "Destination keystore type (JKS, PKCS12)"
+            required: true
+            default: "JKS"
+          - name: "dest_pass"
+            type: "string"
+            description: "Destination keystore password"
+            required: true
+          - name: "noprompt"
+            type: "flag"
+            description: "Do not prompt for confirmation (-noprompt)"
+            required: false
+            default: " -noprompt"
+
+      - name: "delete-entry"
+        description: "Delete an entry (key pair or certificate) from a keystore"
+        template: "keytool -delete -alias {{alias}} -keystore {{keystore}} -storepass {{storepass}}"
+        tags: ["remove", "delete", "alias", "clean up"]
+        inputs:
+          - name: "alias"
+            type: "string"
+            description: "Alias of the entry to delete"
+            required: true
+          - name: "keystore"
+            type: "file"
+            description: "Keystore file"
+            required: true
+          - name: "storepass"
+            type: "string"
+            description: "Keystore password"
+            required: true
+
+      - name: "change-alias"
+        description: "Rename an entry's alias in a keystore"
+        template: "keytool -changealias -alias {{old_alias}} -destalias {{new_alias}} -keystore {{keystore}} -storepass {{storepass}} -keypass {{keypass}}"
+        tags: ["rename", "alias", "changealias"]
+        inputs:
+          - name: "old_alias"
+            type: "string"
+            description: "Current alias name"
+            required: true
+          - name: "new_alias"
+            type: "string"
+            description: "New alias name"
+            required: true
+          - name: "keystore"
+            type: "file"
+            description: "Keystore file"
+            required: true
+          - name: "storepass"
+            type: "string"
+            description: "Keystore password"
+            required: true
+          - name: "keypass"
+            type: "string"
+            description: "Key entry password"
+            required: true
+
+      - name: "change-storepass"
+        description: "Change the password of a keystore"
+        template: "keytool -storepasswd -keystore {{keystore}} -storepass {{old_pass}} -new {{new_pass}}"
+        tags: ["password", "change password", "storepasswd"]
+        inputs:
+          - name: "keystore"
+            type: "file"
+            description: "Keystore file"
+            required: true
+          - name: "old_pass"
+            type: "string"
+            description: "Current keystore password"
+            required: true
+          - name: "new_pass"
+            type: "string"
+            description: "New keystore password"
+            required: true
+
+      - name: "print-cert"
+        description: "Display the contents of a certificate file (no keystore required)"
+        template: "keytool -printcert{{verbose}} -file {{cert_file}}"
+        tags: ["inspect", "read", "view certificate", "decode", "print"]
+        inputs:
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate file (.cer, .pem, .crt, .der)"
+            required: true
+          - name: "verbose"
+            type: "flag"
+            description: "Verbose output (-v)"
+            required: false
+            default: " -v"

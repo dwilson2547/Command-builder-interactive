@@ -1,0 +1,587 @@
+name: "maven"
+description: "Apache Maven build tool: lifecycle, dependencies, testing, versioning, release, archetypes"
+version: "1.0.0"
+commands:
+  - name: "lifecycle"
+    description: "Core Maven build lifecycle phases"
+    options:
+      - name: "clean"
+        description: "Delete the target directory and all build output"
+        template: "mvn clean{{offline}}{{quiet}}"
+        tags: ["delete build", "remove target", "wipe"]
+        inputs:
+          - name: "offline"
+            type: "flag"
+            description: "Work offline — do not contact remote repositories (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "compile"
+        description: "Compile the project source code"
+        template: "mvn compile{{profile}}{{threads}}{{offline}}{{quiet}}"
+        tags: ["build", "javac"]
+        inputs:
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s), e.g. -P prod,debug (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "threads"
+            type: "string"
+            description: "Parallel threads, e.g. -T 4 or -T 1C (leave blank for single-threaded)"
+            required: false
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "test"
+        description: "Compile and run all unit tests"
+        template: "mvn test{{profile}}{{threads}}{{offline}}{{quiet}}"
+        tags: ["unit test", "surefire", "junit"]
+        inputs:
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s), e.g. -P ci (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "threads"
+            type: "string"
+            description: "Parallel threads, e.g. -T 4 (leave blank for single-threaded)"
+            required: false
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "package"
+        description: "Compile, test and package the project (e.g. into a JAR or WAR)"
+        template: "mvn package{{skip_tests}}{{profile}}{{threads}}{{offline}}{{quiet}}"
+        tags: ["jar", "war", "bundle", "artifact"]
+        inputs:
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s), e.g. -P prod (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "skip_tests"
+            type: "flag"
+            description: "Skip test execution but still compile tests (-DskipTests)"
+            required: false
+            default: " -DskipTests"
+          - name: "threads"
+            type: "string"
+            description: "Parallel threads, e.g. -T 4 (leave blank for single-threaded)"
+            required: false
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "verify"
+        description: "Run integration tests and verify the package is valid"
+        template: "mvn verify{{skip_tests}}{{profile}}{{threads}}{{offline}}{{quiet}}"
+        tags: ["integration test", "failsafe", "validate"]
+        inputs:
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s) (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "skip_tests"
+            type: "flag"
+            description: "Skip test execution (-DskipTests)"
+            required: false
+            default: " -DskipTests"
+          - name: "threads"
+            type: "string"
+            description: "Parallel threads, e.g. -T 4 (leave blank for single-threaded)"
+            required: false
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "install"
+        description: "Build, test and install the artifact into the local Maven repository"
+        template: "mvn install{{skip_tests}}{{profile}}{{threads}}{{offline}}{{quiet}}"
+        tags: ["local repo", "~/.m2", "publish local"]
+        inputs:
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s) (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "skip_tests"
+            type: "flag"
+            description: "Skip test execution (-DskipTests)"
+            required: false
+            default: " -DskipTests"
+          - name: "threads"
+            type: "string"
+            description: "Parallel threads, e.g. -T 4 (leave blank for single-threaded)"
+            required: false
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "deploy"
+        description: "Build and deploy the artifact to a remote repository"
+        template: "mvn deploy{{skip_tests}}{{profile}}{{offline}}{{quiet}}"
+        tags: ["publish", "nexus", "artifactory", "remote repo"]
+        inputs:
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s), e.g. -P release (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "skip_tests"
+            type: "flag"
+            description: "Skip test execution (-DskipTests)"
+            required: false
+            default: " -DskipTests"
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "clean-install"
+        description: "Clean then build and install — the most common full rebuild"
+        template: "mvn clean install{{skip_tests}}{{profile}}{{threads}}{{offline}}{{quiet}}"
+        tags: ["full build", "clean build", "ci build"]
+        inputs:
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s), e.g. -P prod (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "skip_tests"
+            type: "flag"
+            description: "Skip test execution (-DskipTests)"
+            required: false
+            default: " -DskipTests"
+          - name: "threads"
+            type: "string"
+            description: "Parallel threads, e.g. -T 4 or -T 1C (leave blank for single-threaded)"
+            required: false
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+  - name: "test"
+    description: "Run specific tests with Surefire"
+    options:
+      - name: "run-class"
+        description: "Run a specific test class"
+        template: "mvn test -Dtest={{test_class}}{{profile}}{{quiet}}"
+        tags: ["single test", "junit class", "surefire"]
+        inputs:
+          - name: "test_class"
+            type: "string"
+            description: "Test class name, e.g. MyServiceTest or com.example.MyServiceTest"
+            required: true
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s) (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "run-method"
+        description: "Run a specific test method within a class"
+        template: "mvn test -Dtest={{test_class}}#{{test_method}}{{profile}}{{quiet}}"
+        tags: ["single method", "specific test", "surefire"]
+        inputs:
+          - name: "test_class"
+            type: "string"
+            description: "Test class name, e.g. MyServiceTest"
+            required: true
+          - name: "test_method"
+            type: "string"
+            description: "Test method name, e.g. shouldReturnTrueWhenValid"
+            required: true
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s) (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "run-pattern"
+        description: "Run all test classes matching a wildcard pattern"
+        template: "mvn test -Dtest={{pattern}}{{profile}}"
+        tags: ["test pattern", "wildcard", "surefire glob"]
+        inputs:
+          - name: "pattern"
+            type: "string"
+            description: "Wildcard pattern, e.g. **/Service*Test.java or My*Test"
+            required: true
+          - name: "profile"
+            type: "string"
+            description: "Activate profile(s) (leave blank to skip)"
+            required: false
+            sub_command: "grep -Po '(?<=<id>)[^<]+' pom.xml 2>/dev/null | awk '{print $1\",\"$1}'"
+
+  - name: "dependency"
+    description: "Inspect and manage project dependencies"
+    options:
+      - name: "tree"
+        description: "Print the full dependency tree"
+        template: "mvn dependency:tree{{verbose}}{{includes}} {{offline}}"
+        tags: ["transitive deps", "dep tree", "resolve"]
+        inputs:
+          - name: "verbose"
+            type: "flag"
+            description: "Show all duplicate/conflicting dependencies (-Dverbose)"
+            required: false
+            default: " -Dverbose"
+          - name: "includes"
+            type: "string"
+            description: "Filter by groupId:artifactId pattern, e.g. -Dincludes=com.example (leave blank for all)"
+            required: false
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+
+      - name: "analyze"
+        description: "Analyze declared vs actually used dependencies"
+        template: "mvn dependency:analyze{{fail_on_warning}}"
+        tags: ["unused deps", "undeclared", "audit deps"]
+        inputs:
+          - name: "fail_on_warning"
+            type: "flag"
+            description: "Fail the build if warnings are found (-DfailOnWarning)"
+            required: false
+            default: " -DfailOnWarning"
+
+      - name: "copy-dependencies"
+        description: "Copy project dependencies to a local output directory"
+        template: "mvn dependency:copy-dependencies -DoutputDirectory={{output_dir}}{{no_transitive}}{{offline}}"
+        tags: ["gather jars", "bundle deps", "lib folder"]
+        inputs:
+          - name: "output_dir"
+            type: "dir"
+            description: "Directory to copy dependencies into"
+            required: true
+            default: "target/dependency"
+          - name: "no_transitive"
+            type: "flag"
+            description: "Exclude transitive dependencies (-DexcludeTransitive=true)"
+            required: false
+            default: " -DexcludeTransitive=true"
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+
+      - name: "get"
+        description: "Download a specific artifact from a remote repository to ~/.m2"
+        template: "mvn dependency:get -Dartifact={{group_id}}:{{artifact_id}}:{{version}}"
+        tags: ["download artifact", "fetch jar", "pull dependency"]
+        inputs:
+          - name: "group_id"
+            type: "string"
+            description: "Group ID, e.g. org.springframework"
+            required: true
+          - name: "artifact_id"
+            type: "string"
+            description: "Artifact ID, e.g. spring-core"
+            required: true
+          - name: "version"
+            type: "string"
+            description: "Version, e.g. 6.1.0"
+            required: true
+
+      - name: "resolve-sources"
+        description: "Download sources JARs for all dependencies"
+        template: "mvn dependency:sources{{offline}}"
+        tags: ["source jars", "download sources", "ide sources"]
+        inputs:
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+
+  - name: "multimodule"
+    description: "Build specific modules in a multi-module project"
+    options:
+      - name: "build-module"
+        description: "Build a specific module (and its dependencies)"
+        template: "mvn install -pl {{module}}{{also_make}}{{skip_tests}}{{offline}}"
+        tags: ["submodule", "reactor", "-pl"]
+        inputs:
+          - name: "module"
+            type: "string"
+            description: "Module path or artifactId, e.g. my-service or ./services/auth"
+            required: true
+            sub_command: "find . -name pom.xml -not -path '*/target/*' -not -path '*/\\.*' 2>/dev/null | xargs -I{} dirname {} | grep -v '^\\.\\?$' | sed 's|^\\./||'"
+          - name: "also_make"
+            type: "flag"
+            description: "Also build modules the selected module depends on (--also-make)"
+            required: false
+            default: " --also-make"
+          - name: "skip_tests"
+            type: "flag"
+            description: "Skip test execution (-DskipTests)"
+            required: false
+            default: " -DskipTests"
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+
+      - name: "resume-from"
+        description: "Resume a failed multi-module build from a specific module"
+        template: "mvn install -rf {{module}}{{skip_tests}}{{offline}}"
+        tags: ["resume build", "reactor resume", "-rf"]
+        inputs:
+          - name: "module"
+            type: "string"
+            description: "Module to resume from"
+            required: true
+            sub_command: "find . -name pom.xml -not -path '*/target/*' -not -path '*/\\.*' 2>/dev/null | xargs -I{} dirname {} | grep -v '^\\.\\?$' | sed 's|^\\./||'"
+          - name: "skip_tests"
+            type: "flag"
+            description: "Skip test execution (-DskipTests)"
+            required: false
+            default: " -DskipTests"
+          - name: "offline"
+            type: "flag"
+            description: "Work offline (-o)"
+            required: false
+            default: " -o"
+
+  - name: "versions"
+    description: "Inspect and update dependency and plugin versions"
+    options:
+      - name: "check-dependency-updates"
+        description: "Display available updates for project dependencies"
+        template: "mvn versions:display-dependency-updates{{allow_snapshots}}"
+        tags: ["outdated", "new versions", "upgrade deps"]
+        inputs:
+          - name: "allow_snapshots"
+            type: "flag"
+            description: "Include SNAPSHOT versions in results (-DallowSnapshots)"
+            required: false
+            default: " -DallowSnapshots"
+
+      - name: "check-plugin-updates"
+        description: "Display available updates for Maven plugins"
+        template: "mvn versions:display-plugin-updates"
+        tags: ["plugin versions", "outdated plugins"]
+        inputs: []
+
+      - name: "set-version"
+        description: "Set the project version in pom.xml"
+        template: "mvn versions:set -DnewVersion={{version}}{{generate_backup_poms}}"
+        tags: ["bump version", "release version", "snapshot"]
+        inputs:
+          - name: "version"
+            type: "string"
+            description: "New version string, e.g. 2.0.0 or 2.1.0-SNAPSHOT"
+            required: true
+          - name: "generate_backup_poms"
+            type: "flag"
+            description: "Skip generating pom.xml.versionsBackup files (-DgenerateBackupPoms=false)"
+            required: false
+            default: " -DgenerateBackupPoms=false"
+
+      - name: "revert"
+        description: "Revert pom.xml to the version backed up by versions:set"
+        template: "mvn versions:revert"
+        tags: ["undo version change", "restore pom"]
+        inputs: []
+
+      - name: "commit"
+        description: "Commit pom.xml version changes and remove backup files"
+        template: "mvn versions:commit"
+        tags: ["confirm version change", "remove backup poms"]
+        inputs: []
+
+  - name: "archetype"
+    description: "Generate new projects from archetypes"
+    options:
+      - name: "generate-interactive"
+        description: "Generate a new Maven project interactively from an archetype"
+        template: "mvn archetype:generate"
+        tags: ["new project", "scaffold", "quickstart"]
+        inputs: []
+
+      - name: "generate"
+        description: "Generate a new Maven project from a specific archetype non-interactively"
+        template: "mvn archetype:generate -DinteractiveMode=false -DarchetypeGroupId={{archetype_group}} -DarchetypeArtifactId={{archetype_artifact}} -DarchetypeVersion={{archetype_version}} -DgroupId={{group_id}} -DartifactId={{artifact_id}} -Dversion={{version}}"
+        tags: ["quickstart", "new project", "scaffold", "template"]
+        inputs:
+          - name: "archetype_group"
+            type: "string"
+            description: "Archetype groupId"
+            required: true
+            default: "org.apache.maven.archetypes"
+          - name: "archetype_artifact"
+            type: "string"
+            description: "Archetype artifactId"
+            required: true
+            default: "maven-archetype-quickstart"
+          - name: "archetype_version"
+            type: "string"
+            description: "Archetype version"
+            required: true
+            default: "1.4"
+          - name: "group_id"
+            type: "string"
+            description: "New project groupId, e.g. com.example"
+            required: true
+          - name: "artifact_id"
+            type: "string"
+            description: "New project artifactId, e.g. my-app"
+            required: true
+          - name: "version"
+            type: "string"
+            description: "New project version"
+            required: true
+            default: "1.0-SNAPSHOT"
+
+  - name: "release"
+    description: "Prepare and perform Maven releases"
+    options:
+      - name: "prepare"
+        description: "Prepare a release — tags VCS, strips SNAPSHOT, updates versions"
+        template: "mvn release:prepare{{dry_run}}{{batch_mode}}"
+        tags: ["tag release", "remove snapshot", "release cycle"]
+        inputs:
+          - name: "dry_run"
+            type: "flag"
+            description: "Simulate the release without making changes (-DdryRun)"
+            required: false
+            default: " -DdryRun"
+          - name: "batch_mode"
+            type: "flag"
+            description: "Non-interactive batch mode — uses defaults (-B)"
+            required: false
+            default: " -B"
+
+      - name: "perform"
+        description: "Perform the release — checks out the tag, builds and deploys"
+        template: "mvn release:perform{{batch_mode}}"
+        tags: ["deploy release", "publish release"]
+        inputs:
+          - name: "batch_mode"
+            type: "flag"
+            description: "Non-interactive batch mode (-B)"
+            required: false
+            default: " -B"
+
+      - name: "rollback"
+        description: "Rollback a release:prepare — restores pom.xml to pre-release state"
+        template: "mvn release:rollback"
+        tags: ["undo release", "revert release prepare"]
+        inputs: []
+
+      - name: "clean"
+        description: "Clean up temporary release files left by release:prepare"
+        template: "mvn release:clean"
+        tags: ["clean release files", "release working files"]
+        inputs: []
+
+  - name: "help"
+    description: "Inspect the effective configuration and plugin documentation"
+    options:
+      - name: "effective-pom"
+        description: "Display the effective POM with all inherited and default settings"
+        template: "mvn help:effective-pom{{quiet}}"
+        tags: ["resolved pom", "full pom", "inherited settings"]
+        inputs:
+          - name: "quiet"
+            type: "flag"
+            description: "Suppress most output (-q)"
+            required: false
+            default: " -q"
+
+      - name: "effective-settings"
+        description: "Display the effective Maven settings.xml"
+        template: "mvn help:effective-settings"
+        tags: ["settings.xml", "mirrors", "servers"]
+        inputs: []
+
+      - name: "describe-plugin"
+        description: "Describe goals and parameters of a Maven plugin"
+        template: "mvn help:describe -Dplugin={{plugin}}{{detail}}"
+        tags: ["plugin docs", "goal info", "parameters"]
+        inputs:
+          - name: "plugin"
+            type: "string"
+            description: "Plugin prefix or groupId:artifactId, e.g. compiler or org.apache.maven.plugins:maven-compiler-plugin"
+            required: true
+          - name: "detail"
+            type: "flag"
+            description: "Show full parameter details (-Ddetail)"
+            required: false
+            default: " -Ddetail"
+
+      - name: "active-profiles"
+        description: "List all currently active Maven profiles"
+        template: "mvn help:active-profiles"
+        tags: ["profiles", "active", "which profile"]
+        inputs: []

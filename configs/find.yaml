@@ -1,0 +1,240 @@
+name: "find"
+description: "File search and bulk operations: search, action"
+version: "1.0.0"
+commands:
+  - name: "search"
+    description: "Find files and directories by various criteria"
+    options:
+      - name: "by-name"
+        description: "Find files by name pattern"
+        template: "find {{path}} -name '{{pattern}}'{{type}}{{max_depth}}"
+        tags: ["find file", "search by name", "locate file"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory for the search"
+            required: true
+            default: "."
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern, e.g. *.log or config.yaml"
+            required: true
+          - name: "type"
+            type: "string"
+            description: "Limit to type: -type f (file) or -type d (directory) (leave blank for both)"
+            required: false
+          - name: "max_depth"
+            type: "string"
+            description: "Max directory depth, e.g. -maxdepth 2 (leave blank for unlimited)"
+            required: false
+
+      - name: "by-extension"
+        description: "Find files with a specific extension"
+        template: "find {{path}} -name '*.{{extension}}'{{max_depth}}"
+        tags: ["find by extension", "file type", "search extension"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "extension"
+            type: "string"
+            description: "File extension without the dot, e.g. py or yaml"
+            required: true
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth, e.g. -maxdepth 3 (leave blank for unlimited)"
+            required: false
+
+      - name: "by-type"
+        description: "Find entries by type (file, directory, symlink, etc.)"
+        template: "find {{path}} -type {{type}}{{max_depth}}"
+        tags: ["find directory", "find symlink", "find type"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "type"
+            type: "string"
+            description: "Type: f=file, d=directory, l=symlink, b=block, c=char, p=pipe, s=socket"
+            required: true
+            default: "f"
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth, e.g. -maxdepth 2 (leave blank for unlimited)"
+            required: false
+
+      - name: "by-size"
+        description: "Find files larger or smaller than a given size"
+        template: "find {{path}} -type f -size {{size}}{{max_depth}}"
+        tags: ["find large files", "find by size", "disk usage"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "size"
+            type: "string"
+            description: "Size expression, e.g. +100M (larger than 100 MB), -1k (smaller than 1 KB)"
+            required: true
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false
+
+      - name: "by-modified-time"
+        description: "Find files modified within a time window"
+        template: "find {{path}} -type f{{mtime}}{{newer}}{{max_depth}}"
+        tags: ["recently modified", "find by date", "mtime"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "mtime"
+            type: "string"
+            description: "Modified-time flag, e.g. -mtime -7 (last 7 days) or -mtime +30 (older than 30 days)"
+            required: false
+          - name: "newer"
+            type: "string"
+            description: "Find files newer than a reference file, e.g. -newer /tmp/reference (leave blank to skip)"
+            required: false
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false
+
+      - name: "by-owner"
+        description: "Find files owned by a specific user or group"
+        template: "find {{path}}{{user}}{{group}} -type f{{max_depth}}"
+        tags: ["find by owner", "user files", "group files"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "user"
+            type: "string"
+            description: "Owner username, e.g. -user alice (leave blank to skip)"
+            required: false
+          - name: "group"
+            type: "string"
+            description: "Group name, e.g. -group www-data (leave blank to skip)"
+            required: false
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false
+
+      - name: "by-permissions"
+        description: "Find files with specific permission bits"
+        template: "find {{path}} -type f -perm {{mode}}{{max_depth}}"
+        tags: ["find by permissions", "executable files", "permission search"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "mode"
+            type: "string"
+            description: "Permission mode, e.g. /111 (any execute bit), -644 (at least 644), 0777 (exact)"
+            required: true
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false
+
+  - name: "action"
+    description: "Perform actions on matched files"
+    options:
+      - name: "delete-matching"
+        description: "Delete files matching a name pattern"
+        template: "find {{path}} -type f -name '{{pattern}}'{{max_depth}} -delete"
+        tags: ["delete files", "remove matching", "cleanup files"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern, e.g. *.tmp or *.log"
+            required: true
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false
+
+      - name: "exec-on-matching"
+        description: "Run a command on each matched file"
+        template: "find {{path}} -type f -name '{{pattern}}'{{max_depth}} -exec {{command}} {} \\;"
+        tags: ["exec on files", "batch command", "find exec"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern, e.g. *.sh"
+            required: true
+          - name: "command"
+            type: "string"
+            description: "Command to run on each matched file, e.g. chmod +x or gzip"
+            required: true
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false
+
+      - name: "copy-matching"
+        description: "Copy all matched files to a destination directory"
+        template: "find {{path}} -type f -name '{{pattern}}'{{max_depth}} -exec cp {} {{destination}} \\;"
+        tags: ["copy files", "bulk copy", "find and copy"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern, e.g. *.conf"
+            required: true
+          - name: "destination"
+            type: "string"
+            description: "Destination directory path"
+            required: true
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false
+
+      - name: "print-with-size"
+        description: "Print matched files with their sizes, sorted largest first"
+        template: "find {{path}} -type f -name '{{pattern}}'{{max_depth}} -printf '%s\\t%p\\n' | sort -rn"
+        tags: ["file sizes", "sorted by size", "find with size"]
+        inputs:
+          - name: "path"
+            type: "string"
+            description: "Starting directory"
+            required: true
+            default: "."
+          - name: "pattern"
+            type: "string"
+            description: "Name pattern, e.g. *.log or * for all files"
+            required: true
+            default: "*"
+          - name: "max_depth"
+            type: "string"
+            description: "Max depth (leave blank for unlimited)"
+            required: false

@@ -21,11 +21,13 @@ func sampleConfigs() []*config.Config {
 							Name:        "print-p12",
 							Description: "Print P12 keystore content",
 							Template:    "openssl pkcs12 -info -in {{f}}",
+							Tags:        []string{"pfx", "certificate", "inspect"},
 						},
 						{
 							Name:        "generate-rsa-key",
 							Description: "Generate RSA private key",
 							Template:    "openssl genrsa -out {{f}} 4096",
+							Tags:        []string{"keygen", "rsa", "private key"},
 						},
 					},
 				},
@@ -37,6 +39,7 @@ func sampleConfigs() []*config.Config {
 							Name:        "create-gzip",
 							Description: "Create gzip compressed archive",
 							Template:    "tar -czvf {{out}} {{src}}",
+							Tags:        []string{"compress", "zip", "bundle"},
 						},
 					},
 				},
@@ -117,6 +120,59 @@ func TestSearchFilterConfig(t *testing.T) {
 	}
 	if results[0].Config.Name != "custom" {
 		t.Errorf("expected custom config, got %q", results[0].Config.Name)
+	}
+}
+
+func TestSearchByTag(t *testing.T) {
+	cfgs := sampleConfigs()
+
+	// Exact tag match should find the option.
+	results := Search("pfx", cfgs, Filter{Type: FilterAll})
+	if len(results) == 0 {
+		t.Fatal("expected at least one result for tag 'pfx'")
+	}
+	found := false
+	for _, r := range results {
+		if r.Option.Name == "print-p12" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected print-p12 option in results for tag 'pfx'")
+	}
+}
+
+func TestSearchByTagPrefix(t *testing.T) {
+	cfgs := sampleConfigs()
+
+	// Prefix of a tag should also match.
+	results := Search("comp", cfgs, Filter{Type: FilterAll})
+	if len(results) == 0 {
+		t.Fatal("expected at least one result for tag prefix 'comp'")
+	}
+	found := false
+	for _, r := range results {
+		if r.Option.Name == "create-gzip" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected create-gzip option in results for tag prefix 'comp'")
+	}
+}
+
+func TestSearchTagScoresHigherThanDescription(t *testing.T) {
+	cfgs := sampleConfigs()
+
+	// "keygen" is an exact tag on generate-rsa-key; it should outrank any description match.
+	results := Search("keygen", cfgs, Filter{Type: FilterAll})
+	if len(results) == 0 {
+		t.Fatal("expected results for 'keygen'")
+	}
+	if results[0].Option.Name != "generate-rsa-key" {
+		t.Errorf("expected generate-rsa-key as top result for 'keygen', got %q", results[0].Option.Name)
 	}
 }
 

@@ -8,6 +8,7 @@ commands:
       - name: "print-p12"
         description: "Print P12 keystore content"
         template: "openssl pkcs12 -info -in {{input_file}} -passin pass:{{password}}"
+        tags: ["pfx", "certificate", "inspect", "keystore", "pkcs12"]
         inputs:
           - name: "input_file"
             type: "file"
@@ -21,6 +22,7 @@ commands:
       - name: "generate-rsa-key"
         description: "Generate RSA private key"
         template: "openssl genrsa -out {{output_file}} {{key_size}}"
+        tags: ["keygen", "rsa", "private key", "create key"]
         inputs:
           - name: "output_file"
             type: "file"
@@ -127,9 +129,38 @@ commands:
   - name: "tar"
     description: "Tape archive utility"
     options:
+      - name: "create"
+        description: "Create archive with optional compression flags"
+        template: "tar -cv{{gzip}}{{bzip2}}{{xz}}f {{output_file}} {{source}}"
+        tags: ["archive", "pack", "bundle", "compress", "flexible"]
+        inputs:
+          - name: "gzip"
+            type: "flag"
+            description: "gzip compression (-z)"
+            required: false
+            default: "z"
+          - name: "bzip2"
+            type: "flag"
+            description: "bzip2 compression (-j)"
+            required: false
+            default: "j"
+          - name: "xz"
+            type: "flag"
+            description: "xz compression (-J)"
+            required: false
+            default: "J"
+          - name: "output_file"
+            type: "file"
+            description: "Output archive file"
+            required: true
+          - name: "source"
+            type: "dir"
+            description: "Source file or directory"
+            required: true
       - name: "create-tarball"
         description: "Create tar archive"
         template: "tar -cvf {{output_file}} {{source}}"
+        tags: ["archive", "pack", "bundle"]
         inputs:
           - name: "output_file"
             type: "file"
@@ -142,6 +173,7 @@ commands:
       - name: "create-gzip"
         description: "Create gzip compressed archive"
         template: "tar -czvf {{output_file}} {{source}}"
+        tags: ["compress", "zip", "gz", "pack", "archive"]
         inputs:
           - name: "output_file"
             type: "file"
@@ -503,6 +535,7 @@ commands:
       - name: "search-recursive"
         description: "Recursively search in directory"
         template: "grep -rn \"{{pattern}}\" {{directory}}"
+        tags: ["find text", "text search", "look up", "rgrep"]
         inputs:
           - name: "pattern"
             type: "string"
@@ -554,6 +587,7 @@ commands:
       - name: "build-image"
         description: "Build Docker image from Dockerfile"
         template: "docker build -t {{image_name}}:{{tag}} -f {{dockerfile}} {{context}}"
+        tags: ["build", "compile", "dockerfile", "create image", "docker build"]
         inputs:
           - name: "image_name"
             type: "string"
@@ -577,6 +611,7 @@ commands:
       - name: "run-container"
         description: "Run a Docker container"
         template: "docker run -d --name {{container_name}} -p {{host_port}}:{{container_port}} {{image_name}}:{{tag}}"
+        tags: ["start", "launch", "deploy", "spin up", "container"]
         inputs:
           - name: "container_name"
             type: "string"
@@ -607,6 +642,7 @@ commands:
             type: "string"
             description: "Container name or ID"
             required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Image}}'"
           - name: "command"
             type: "string"
             description: "Command to execute"
@@ -632,6 +668,7 @@ commands:
             type: "string"
             description: "Container name or ID"
             required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Image}}'"
       - name: "logs"
         description: "View container logs"
         template: "docker logs -f --tail={{lines}} {{container}}"
@@ -640,6 +677,7 @@ commands:
             type: "string"
             description: "Container name or ID"
             required: true
+            sub_command: "docker ps --format '{{.Names}},{{.Image}}'"
           - name: "lines"
             type: "string"
             description: "Number of tail lines"

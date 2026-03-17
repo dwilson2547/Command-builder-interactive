@@ -1,0 +1,489 @@
+name: "openssl"
+description: "OpenSSL — TLS certificates, keys, CSRs, format conversion, and remote inspection"
+version: "1.0.0"
+commands:
+  - name: "inspect"
+    description: "Inspect certificates, keys, CSRs, and remote TLS endpoints"
+    options:
+      - name: "inspect-cert"
+        description: "Print the full contents of a certificate file"
+        template: "openssl x509 -in {{cert_file}}{{inform}} -text -noout"
+        tags: ["view", "read", "decode", "x509", "pem", "der", "certificate info"]
+        inputs:
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate file (.pem, .crt, .cer)"
+            required: true
+          - name: "inform"
+            type: "string"
+            description: "Input format if not PEM, e.g. -inform der (leave blank for PEM)"
+            required: false
+
+      - name: "inspect-cert-dates"
+        description: "Show only the validity start and expiry dates of a certificate"
+        template: "openssl x509 -in {{cert_file}} -noout -dates"
+        tags: ["expiry", "valid", "not after", "not before", "dates", "expires"]
+        inputs:
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate file (.pem, .crt, .cer)"
+            required: true
+
+      - name: "inspect-csr"
+        description: "Print the full contents of a Certificate Signing Request"
+        template: "openssl req -in {{csr_file}} -text -noout{{verify}}"
+        tags: ["view csr", "read csr", "decode csr", "signing request"]
+        inputs:
+          - name: "csr_file"
+            type: "file"
+            description: "CSR file (.csr, .pem)"
+            required: true
+          - name: "verify"
+            type: "flag"
+            description: "Verify the CSR signature (-verify)"
+            required: false
+            default: " -verify"
+
+      - name: "inspect-pkcs12"
+        description: "Print the contents of a PKCS12 (.p12 / .pfx) file"
+        template: "openssl pkcs12 -info -in {{p12_file}}{{passin}} -noout"
+        tags: ["p12", "pfx", "pkcs12", "keystore", "inspect"]
+        inputs:
+          - name: "p12_file"
+            type: "file"
+            description: "PKCS12 file (.p12, .pfx)"
+            required: true
+          - name: "passin"
+            type: "string"
+            description: "Store password, e.g. -passin pass:secret (leave blank to be prompted)"
+            required: false
+
+      - name: "inspect-private-key"
+        description: "Print the details of an RSA private key"
+        template: "openssl rsa -in {{key_file}} -text -noout{{passin}}"
+        tags: ["private key", "rsa", "inspect key", "key details"]
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Private key file (.pem, .key)"
+            required: true
+          - name: "passin"
+            type: "string"
+            description: "Key passphrase, e.g. -passin pass:secret (leave blank if unencrypted)"
+            required: false
+
+      - name: "check-remote-cert"
+        description: "Show the TLS certificate chain presented by a remote host"
+        template: "openssl s_client -connect {{host}}:{{port}}{{servername}} -showcerts </dev/null"
+        tags: ["remote", "tls", "ssl", "server cert", "https", "check server"]
+        inputs:
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+          - name: "port"
+            type: "string"
+            description: "Remote port"
+            required: true
+            default: "443"
+          - name: "servername"
+            type: "string"
+            description: "SNI hostname if different from host, e.g. -servername example.com (leave blank to use host)"
+            required: false
+
+      - name: "check-remote-cert-dates"
+        description: "Show expiry dates of the TLS certificate on a remote host"
+        template: "openssl s_client -connect {{host}}:{{port}}{{servername}} </dev/null 2>/dev/null | openssl x509 -noout -dates"
+        tags: ["remote expiry", "tls expiry", "server cert dates", "expires", "https"]
+        inputs:
+          - name: "host"
+            type: "string"
+            description: "Remote hostname or IP"
+            required: true
+          - name: "port"
+            type: "string"
+            description: "Remote port"
+            required: true
+            default: "443"
+          - name: "servername"
+            type: "string"
+            description: "SNI hostname if different from host, e.g. -servername example.com (leave blank to use host)"
+            required: false
+
+      - name: "verify-cert-chain"
+        description: "Verify a certificate against a CA bundle"
+        template: "openssl verify -CAfile {{ca_file}}{{untrusted}} {{cert_file}}"
+        tags: ["verify", "validate", "chain", "ca", "trust"]
+        inputs:
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate to verify (.pem, .crt)"
+            required: true
+          - name: "ca_file"
+            type: "file"
+            description: "CA certificate bundle file"
+            required: true
+          - name: "untrusted"
+            type: "string"
+            description: "Intermediate certificate file, e.g. -untrusted chain.pem (leave blank if not needed)"
+            required: false
+
+      - name: "check-key-cert-match"
+        description: "Verify that a private key and certificate belong together (compare modulus MD5)"
+        template: "echo 'Key:' && openssl rsa -noout -modulus -in {{key_file}} | openssl md5 && echo 'Cert:' && openssl x509 -noout -modulus -in {{cert_file}} | openssl md5"
+        tags: ["match", "pair", "key cert", "verify match", "modulus"]
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Private key file (.pem, .key)"
+            required: true
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate file (.pem, .crt)"
+            required: true
+
+  - name: "generate"
+    description: "Generate keys, CSRs, and self-signed certificates"
+    options:
+      - name: "rsa-key"
+        description: "Generate an RSA private key"
+        template: "openssl genrsa{{passout}} -out {{output_file}} {{key_size}}"
+        tags: ["genrsa", "private key", "rsa", "create key", "new key"]
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output key file path (.pem)"
+            required: true
+            default: "private.pem"
+          - name: "key_size"
+            type: "string"
+            description: "Key size in bits"
+            required: false
+            default: "4096"
+          - name: "passout"
+            type: "string"
+            description: "Encrypt the key with a passphrase, e.g. -aes256 -passout pass:secret (leave blank for unencrypted)"
+            required: false
+
+      - name: "ec-key"
+        description: "Generate an EC private key"
+        template: "openssl ecparam -name {{curve}} -genkey -noout -out {{output_file}}"
+        tags: ["ec", "elliptic curve", "ecdsa", "private key", "create key"]
+        inputs:
+          - name: "curve"
+            type: "string"
+            description: "Curve name (prime256v1, secp384r1, secp521r1)"
+            required: true
+            default: "prime256v1"
+          - name: "output_file"
+            type: "file"
+            description: "Output key file path (.pem)"
+            required: true
+            default: "ec-private.pem"
+
+      - name: "csr"
+        description: "Generate a CSR from an existing private key"
+        template: "openssl req -new -key {{key_file}} -out {{csr_file}} -subj '/CN={{cn}}/O={{org}}/OU={{ou}}/C={{country}}'"
+        tags: ["csr", "certificate request", "signing request", "ca submit"]
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Existing private key file"
+            required: true
+          - name: "csr_file"
+            type: "file"
+            description: "Output CSR file path (.csr)"
+            required: true
+            default: "request.csr"
+          - name: "cn"
+            type: "string"
+            description: "Common Name (CN) — domain name or server name"
+            required: true
+          - name: "org"
+            type: "string"
+            description: "Organisation (O)"
+            required: false
+          - name: "ou"
+            type: "string"
+            description: "Organisational Unit (OU)"
+            required: false
+          - name: "country"
+            type: "string"
+            description: "Two-letter country code (C)"
+            required: false
+            default: "US"
+
+      - name: "key-and-csr"
+        description: "Generate a new RSA key and CSR in one step"
+        template: "openssl req -newkey rsa:{{key_size}} -keyout {{key_file}} -out {{csr_file}}{{nodes}} -subj '/CN={{cn}}/O={{org}}/C={{country}}'"
+        tags: ["new key csr", "generate csr", "all in one", "rsa csr"]
+        inputs:
+          - name: "key_size"
+            type: "string"
+            description: "RSA key size in bits"
+            required: false
+            default: "4096"
+          - name: "key_file"
+            type: "file"
+            description: "Output private key file path (.pem)"
+            required: true
+            default: "private.pem"
+          - name: "csr_file"
+            type: "file"
+            description: "Output CSR file path (.csr)"
+            required: true
+            default: "request.csr"
+          - name: "cn"
+            type: "string"
+            description: "Common Name (CN)"
+            required: true
+          - name: "org"
+            type: "string"
+            description: "Organisation (O)"
+            required: false
+          - name: "country"
+            type: "string"
+            description: "Two-letter country code (C)"
+            required: false
+            default: "US"
+          - name: "nodes"
+            type: "flag"
+            description: "Do not encrypt the private key (-nodes)"
+            required: false
+            default: " -nodes"
+
+      - name: "self-signed-cert"
+        description: "Generate a new RSA key and self-signed certificate in one step"
+        template: "openssl req -x509 -newkey rsa:{{key_size}} -keyout {{key_file}} -out {{cert_file}} -days {{days}}{{nodes}} -subj '/CN={{cn}}/O={{org}}/C={{country}}'"
+        tags: ["self signed", "self-signed", "local cert", "dev cert", "x509"]
+        inputs:
+          - name: "key_size"
+            type: "string"
+            description: "RSA key size in bits"
+            required: false
+            default: "4096"
+          - name: "key_file"
+            type: "file"
+            description: "Output private key file path (.pem)"
+            required: true
+            default: "private.pem"
+          - name: "cert_file"
+            type: "file"
+            description: "Output certificate file path (.pem)"
+            required: true
+            default: "cert.pem"
+          - name: "days"
+            type: "string"
+            description: "Validity period in days"
+            required: false
+            default: "365"
+          - name: "cn"
+            type: "string"
+            description: "Common Name (CN)"
+            required: true
+          - name: "org"
+            type: "string"
+            description: "Organisation (O)"
+            required: false
+          - name: "country"
+            type: "string"
+            description: "Two-letter country code (C)"
+            required: false
+            default: "US"
+          - name: "nodes"
+            type: "flag"
+            description: "Do not encrypt the private key (-nodes)"
+            required: false
+            default: " -nodes"
+
+      - name: "dh-params"
+        description: "Generate Diffie-Hellman parameters"
+        template: "openssl dhparam -out {{output_file}} {{bits}}"
+        tags: ["dh", "diffie-hellman", "dhparam", "key exchange"]
+        inputs:
+          - name: "output_file"
+            type: "file"
+            description: "Output DH params file path (.pem)"
+            required: true
+            default: "dhparam.pem"
+          - name: "bits"
+            type: "string"
+            description: "Parameter size in bits (2048 recommended, 4096 for high security)"
+            required: false
+            default: "2048"
+
+  - name: "convert"
+    description: "Convert between certificate and key formats"
+    options:
+      - name: "pem-to-p12"
+        description: "Bundle a certificate and private key into a PKCS12 (.p12) file"
+        template: "openssl pkcs12 -export -in {{cert_file}} -inkey {{key_file}} -out {{output_file}}{{passout}}{{chain}}"
+        tags: ["export", "bundle", "pfx", "p12", "pkcs12", "convert"]
+        inputs:
+          - name: "cert_file"
+            type: "file"
+            description: "Certificate file (.pem, .crt)"
+            required: true
+          - name: "key_file"
+            type: "file"
+            description: "Matching private key file"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output PKCS12 file path (.p12)"
+            required: true
+            default: "bundle.p12"
+          - name: "passout"
+            type: "string"
+            description: "Protect the P12 with a password, e.g. -passout pass:secret (leave blank for no password)"
+            required: false
+          - name: "chain"
+            type: "string"
+            description: "Intermediate/chain certificate file, e.g. -certfile chain.pem (leave blank if not needed)"
+            required: false
+
+      - name: "p12-to-pem"
+        description: "Extract certificate and key from a PKCS12 file into PEM format"
+        template: "openssl pkcs12 -in {{p12_file}} -out {{output_file}}{{passin}}{{nodes}}"
+        tags: ["extract", "unpack", "pfx", "p12", "pkcs12", "pem", "convert"]
+        inputs:
+          - name: "p12_file"
+            type: "file"
+            description: "PKCS12 file (.p12, .pfx)"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output PEM file path"
+            required: true
+            default: "bundle.pem"
+          - name: "passin"
+            type: "string"
+            description: "PKCS12 password, e.g. -passin pass:secret (leave blank to be prompted)"
+            required: false
+          - name: "nodes"
+            type: "flag"
+            description: "Do not encrypt the extracted private key (-nodes)"
+            required: false
+            default: " -nodes"
+
+      - name: "der-to-pem"
+        description: "Convert a DER-encoded certificate to PEM format"
+        template: "openssl x509 -inform der -in {{der_file}} -out {{pem_file}}"
+        tags: ["der", "pem", "convert", "format", "binary to base64"]
+        inputs:
+          - name: "der_file"
+            type: "file"
+            description: "Input DER certificate file (.der, .cer)"
+            required: true
+          - name: "pem_file"
+            type: "file"
+            description: "Output PEM file path (.pem)"
+            required: true
+            default: "cert.pem"
+
+      - name: "pem-to-der"
+        description: "Convert a PEM-encoded certificate to DER format"
+        template: "openssl x509 -outform der -in {{pem_file}} -out {{der_file}}"
+        tags: ["pem", "der", "convert", "format", "base64 to binary"]
+        inputs:
+          - name: "pem_file"
+            type: "file"
+            description: "Input PEM certificate file (.pem, .crt)"
+            required: true
+          - name: "der_file"
+            type: "file"
+            description: "Output DER file path (.der)"
+            required: true
+            default: "cert.der"
+
+      - name: "extract-public-key"
+        description: "Extract the public key from an RSA private key"
+        template: "openssl rsa -in {{key_file}} -pubout -out {{output_file}}{{passin}}"
+        tags: ["public key", "extract", "rsa pubkey", "derive"]
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Private key file (.pem)"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output public key file path (.pem)"
+            required: true
+            default: "public.pem"
+          - name: "passin"
+            type: "string"
+            description: "Key passphrase, e.g. -passin pass:secret (leave blank if unencrypted)"
+            required: false
+
+      - name: "remove-key-passphrase"
+        description: "Strip the passphrase from an encrypted private key"
+        template: "openssl rsa -in {{key_file}} -out {{output_file}} -passin pass:{{passphrase}}"
+        tags: ["decrypt key", "unencrypt key", "remove passphrase", "strip password"]
+        inputs:
+          - name: "key_file"
+            type: "file"
+            description: "Encrypted private key file"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output unencrypted key file path"
+            required: true
+            default: "private-nopass.pem"
+          - name: "passphrase"
+            type: "string"
+            description: "Current key passphrase"
+            required: true
+
+  - name: "digest"
+    description: "Hashing and symmetric encryption utilities"
+    options:
+      - name: "hash-file"
+        description: "Compute a cryptographic digest of a file"
+        template: "openssl dgst -{{algorithm}} {{file}}"
+        tags: ["hash", "checksum", "md5", "sha256", "sha512", "digest"]
+        inputs:
+          - name: "algorithm"
+            type: "string"
+            description: "Hash algorithm (sha256, sha512, sha1, md5)"
+            required: true
+            default: "sha256"
+          - name: "file"
+            type: "file"
+            description: "File to hash"
+            required: true
+
+      - name: "encrypt-file"
+        description: "Symmetrically encrypt a file with AES-256-CBC"
+        template: "openssl enc -aes-256-cbc -pbkdf2 -salt -in {{input_file}} -out {{output_file}} -k {{password}}"
+        tags: ["encrypt", "aes", "symmetric", "password encrypt"]
+        inputs:
+          - name: "input_file"
+            type: "file"
+            description: "File to encrypt"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output encrypted file path"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Encryption password"
+            required: true
+
+      - name: "decrypt-file"
+        description: "Decrypt a file encrypted with AES-256-CBC"
+        template: "openssl enc -d -aes-256-cbc -pbkdf2 -in {{input_file}} -out {{output_file}} -k {{password}}"
+        tags: ["decrypt", "aes", "symmetric", "password decrypt"]
+        inputs:
+          - name: "input_file"
+            type: "file"
+            description: "Encrypted input file"
+            required: true
+          - name: "output_file"
+            type: "file"
+            description: "Output decrypted file path"
+            required: true
+          - name: "password"
+            type: "string"
+            description: "Decryption password"
+            required: true

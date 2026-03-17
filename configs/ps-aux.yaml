@@ -1,0 +1,149 @@
+name: "ps-aux"
+description: "Process inspection and monitoring with ps aux"
+version: "1.0.0"
+commands:
+  - name: "ps"
+    description: "Common ps aux operations for process inspection"
+    options:
+      - name: "list-all"
+        description: "List all running processes"
+        template: "ps aux{{show_threads}}"
+        tags: ["processes", "list", "all", "running"]
+        inputs:
+          - name: "show_threads"
+            type: "flag"
+            description: "Show threads (H)"
+            required: false
+            default: " H"
+
+      - name: "search-by-name"
+        description: "Find processes matching a name (grep)"
+        template: "ps aux | grep {{process_name}} | grep -v grep"
+        tags: ["find", "grep", "search", "filter", "process name"]
+        inputs:
+          - name: "process_name"
+            type: "string"
+            description: "Process name or pattern to search for"
+            required: true
+
+      - name: "top-by-cpu"
+        description: "Show top N processes sorted by CPU usage"
+        template: "ps aux --sort=-%cpu | head -n {{count}}"
+        tags: ["cpu", "sort", "top", "usage", "most cpu"]
+        inputs:
+          - name: "count"
+            type: "string"
+            description: "Number of processes to show (including header)"
+            required: false
+            default: "11"
+
+      - name: "top-by-memory"
+        description: "Show top N processes sorted by memory usage"
+        template: "ps aux --sort=-%mem | head -n {{count}}"
+        tags: ["memory", "ram", "sort", "top", "usage", "most memory"]
+        inputs:
+          - name: "count"
+            type: "string"
+            description: "Number of processes to show (including header)"
+            required: false
+            default: "11"
+
+      - name: "filter-by-user"
+        description: "Show all processes owned by a specific user"
+        template: "ps aux -u {{user}}"
+        tags: ["user", "filter", "owner", "processes by user"]
+        inputs:
+          - name: "user"
+            type: "string"
+            description: "Username"
+            required: true
+            sub_command: "cut -d: -f1 /etc/passwd"
+
+      - name: "inspect-pid"
+        description: "Inspect a specific process by PID"
+        template: "ps -p {{pid}} -o pid,ppid,user,%cpu,%mem,vsz,rss,stat,start,time,cmd"
+        tags: ["pid", "inspect", "detail", "specific process"]
+        inputs:
+          - name: "pid"
+            type: "string"
+            description: "Process ID (PID)"
+            required: true
+            sub_command: "ps aux --no-headers --sort=-%cpu | awk '{print $2\",\"$1\" cpu:\"$3\"% mem:\"$4\"%  \"$11}'"
+
+      - name: "process-tree"
+        description: "Display processes as a tree showing parent-child relationships"
+        template: "ps aux --forest{{user_filter}}"
+        tags: ["tree", "hierarchy", "parent", "child", "pstree", "fork"]
+        inputs:
+          - name: "user_filter"
+            type: "string"
+            description: "Filter by user (leave blank for all)"
+            required: false
+            sub_command: "cut -d: -f1 /etc/passwd"
+
+      - name: "watch-cpu"
+        description: "Continuously watch top processes by CPU usage"
+        template: "watch -n {{interval}} 'ps aux --sort=-%cpu | head -n {{count}}'"
+        tags: ["watch", "monitor", "live", "cpu", "continuous"]
+        inputs:
+          - name: "interval"
+            type: "string"
+            description: "Refresh interval in seconds"
+            required: false
+            default: "2"
+          - name: "count"
+            type: "string"
+            description: "Number of processes to show (including header)"
+            required: false
+            default: "11"
+
+      - name: "watch-memory"
+        description: "Continuously watch top processes by memory usage"
+        template: "watch -n {{interval}} 'ps aux --sort=-%mem | head -n {{count}}'"
+        tags: ["watch", "monitor", "live", "memory", "ram", "continuous"]
+        inputs:
+          - name: "interval"
+            type: "string"
+            description: "Refresh interval in seconds"
+            required: false
+            default: "2"
+          - name: "count"
+            type: "string"
+            description: "Number of processes to show (including header)"
+            required: false
+            default: "11"
+
+      - name: "custom-columns"
+        description: "Show selected process columns for all processes"
+        template: "ps -eo {{columns}}{{sort_by}}"
+        tags: ["columns", "custom", "format", "fields", "output"]
+        inputs:
+          - name: "columns"
+            type: "string"
+            description: "Comma-separated column list (e.g. pid,user,%cpu,%mem,cmd)"
+            required: true
+            default: "pid,user,%cpu,%mem,vsz,rss,stat,cmd"
+          - name: "sort_by"
+            type: "string"
+            description: "Sort column, e.g. --sort=-%cpu (leave blank for default order)"
+            required: false
+
+      - name: "count-by-name"
+        description: "Count the number of running instances of a process"
+        template: "ps aux | grep -c {{process_name}}"
+        tags: ["count", "instances", "how many", "running count"]
+        inputs:
+          - name: "process_name"
+            type: "string"
+            description: "Process name or pattern to count"
+            required: true
+
+      - name: "processes-on-port"
+        description: "Find the process listening on a specific port (via ss / lsof)"
+        template: "ss -tlnp | grep :{{port}}"
+        tags: ["port", "listen", "socket", "network", "lsof", "ss"]
+        inputs:
+          - name: "port"
+            type: "string"
+            description: "Port number to inspect"
+            required: true
