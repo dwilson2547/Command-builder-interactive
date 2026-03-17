@@ -13,7 +13,8 @@ for composing complex CLI commands from interactive forms.
 4. [Config manager](#4-config-manager)
 5. [Adding your own commands (editor)](#5-adding-your-own-commands-editor)
 6. [Settings & colour customisation](#6-settings--colour-customisation)
-7. [Tips & tricks](#7-tips--tricks)
+7. [Stars](#stars)
+8. [Tips & tricks](#7-tips--tricks)
 
 ---
 
@@ -27,6 +28,20 @@ make it executable:
 chmod +x command-builder-linux-amd64
 ./command-builder-linux-amd64
 ```
+
+Or for macOS:
+
+```bash
+# Apple Silicon
+chmod +x command-builder-darwin-arm64
+./command-builder-darwin-arm64
+
+# Intel Mac
+chmod +x command-builder-darwin-amd64
+./command-builder-darwin-amd64
+```
+
+Windows users: download `command-builder-windows-amd64.exe` (or `arm64`), place it on your `PATH`, and run it from any terminal.
 
 Or build from source:
 
@@ -86,6 +101,7 @@ Prefix your query with a `/` modifier to narrow the search scope:
 | `/default <terms>`           | Search only the built-in default config    |
 | `/all <terms>`               | Search all configs (same as no prefix)     |
 | `/<config-name> <terms>`     | Search one specific config by name         |
+| `/s <terms>`                 | Show starred commands (filter by terms)    |
 | `/config`                    | Open the Config Manager screen             |
 | `/import <url-or-path>`      | Import a config immediately                |
 | `/settings`                  | Open the Settings screen                   |
@@ -135,6 +151,28 @@ in the command template is shown as an input field.
 - The built command preview at the bottom updates in real time. Unfilled
   optional placeholders appear as `<placeholder_name>`.
 - The focused field has a rounded accent-colour border.
+- `flag` type inputs are toggled with **Space** (no text entry needed).
+
+### Dynamic value pickers
+
+Some inputs have a `sub_command` configured, shown with a `Tab: pick value`
+hint in the status bar. Press **Tab** on such a field to run the command and
+open a live scrollable picker:
+
+```
+  Container name  ╭──────────────────────────────────────────╮
+                  │                                          │
+                  ╰──────────────────────────────────────────╯
+  ╭──────────────────────────────────────────────────────╮
+  │ ▶ web-app       nginx:1.25                           │
+  │   db            postgres:16                          │
+  │   cache         redis:7                              │
+  ╰──────────────────────────────────────────────────────╯
+  ↑↓: navigate  Enter: select  Esc: close
+```
+
+Use **↑**/**↓** to highlight an entry, **Enter** to select it, and **Esc** or
+**Tab** to dismiss without selecting.
 
 ### File and directory fields
 
@@ -171,14 +209,25 @@ Or redirect it to a script:
 ./command-builder > /tmp/run.sh && bash /tmp/run.sh
 ```
 
+### Starring a command
+
+Once all required fields are filled, press **`*`** to star the command. You can
+optionally enter a custom name for the star, or leave blank to use the default
+`command › option` label. Starred commands are saved with all their current
+values so you can quickly re-run them later.
+
+Access stars with `/s` in the search bar.
+
 ### Keyboard shortcuts — form screen
 
 | Key          | Action                                            |
 |--------------|---------------------------------------------------|
-| Tab          | Next field / advance path completion              |
+| Tab          | Next field / advance path completion / open picker|
 | Shift+Tab    | Previous field                                    |
-| ↑ / ↓        | Previous/next field or completion item            |
+| ↑ / ↓        | Previous/next field, completion, or picker item   |
+| Space        | Toggle a `flag` input on/off                      |
 | Enter        | Next field; confirm when all required fields done |
+| *            | Star this command with current values             |
 | Esc          | Return to search                                  |
 | Ctrl+C       | Quit                                              |
 
@@ -367,6 +416,10 @@ Press **e** on an input to edit it, or **n** to create one manually:
   Default      ╭────────────────────╮
                │ docker.io          │
                ╰────────────────────╯
+  SubCommand   ╭────────────────────────────────────────────────────────╮
+               │ docker ps --format '{{.Names}},{{.Image}}'             │
+               ╰────────────────────────────────────────────────────────╯
+               Enter to preview
   ── Ctrl+S to save · Esc to cancel ─────────────────────────────────────
 ```
 
@@ -377,7 +430,17 @@ Press **e** on an input to edit it, or **n** to create one manually:
 | `string` | Plain text field                                |
 | `file`   | Text field with Tab path completion (files)     |
 | `dir`    | Text field with Tab path completion (dirs only) |
-| `flag`   | Boolean flag — leave blank to omit from command |
+| `flag`   | Boolean flag — Space to toggle; `default` value is inserted when on |
+
+**SubCommand field:**
+
+Enter any shell command whose stdout (CSV format) will populate a live picker when
+the user presses Tab on this input in the form screen. While the SubCommand field
+is focused in the editor, press **Enter** to preview the picker output immediately
+without leaving the editor. Use **↑**/**↓** to browse the results and **Esc** to
+close the preview.
+
+Inputs with a SubCommand configured are marked with a `⚡` in the inputs list.
 
 All changes are written to disk immediately on each **Ctrl+S** save — no
 separate "commit" step is needed.
@@ -422,8 +485,59 @@ screen.
 - Press **r** to reset the currently selected colour to its default.
 - Press **R** to reset the entire palette to built-in defaults.
 
+### Run on Enter
+
+Toggle **Run on Enter** in the settings screen to execute the built command
+directly in your current shell instead of printing it to stdout. When enabled,
+the status bar shows `run command & quit` instead of `copy command & quit`.
+
+### App name
+
+Set a custom **App name** to personalise the header. You can also have the
+settings screen append a shell alias to `~/.bashrc` so you can launch the app
+by your chosen name.
+
 Colour settings are saved to `~/.config/command-builder/settings.json` and
 loaded automatically at startup.
+
+---
+
+## Stars
+
+Starred commands let you save a command with all its current input values for
+quick re-use.
+
+### Starring a command
+
+1. Fill in the form for any command.
+2. Press **`*`** — optionally enter a custom name, or press **Enter** to use
+   the default `command › option` label.
+3. The star is saved to `~/.config/command-builder/stars.json`.
+
+### Using starred commands
+
+Type `/s` in the search bar (or `/s <term>` to filter):
+
+```
+╭──────────────────────────────────────────────────────────────────────╮
+│  > /s docker                                                         │
+╰──────────────────────────────────────────────────────────────────────╯
+  ★ docker › build-image   myapp:latest                          ⭐ star
+  ★ docker › exec-shell    web-app  /bin/bash                    ⭐ star
+```
+
+Press **Enter** on a starred entry to reopen its form pre-filled with the
+saved values. Adjust any fields and confirm to run or copy the command.
+
+Press **d** to delete a star.
+
+| Key         | Action                               |
+|-------------|--------------------------------------|
+| `/s <term>` | Show/filter starred commands         |
+| ↑ / ↓       | Navigate stars                       |
+| Enter       | Open pre-filled form                 |
+| d           | Delete selected star                 |
+| Esc         | Exit star mode / return to search    |
 
 ---
 

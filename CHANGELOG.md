@@ -2,6 +2,34 @@
 
 All notable changes to Command Builder are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+- **Star mode input freeze** — typing `/s` no longer locks the search bar. Keys were being swallowed while star mode was active, making backspace and further typing unresponsive. Keys now fall through to the text input so users can filter starred commands (`/s <term>`) or continue typing to exit star mode (e.g. `/sed` correctly exits star mode and runs a config-level search).
+
+### Changed
+
+- **SubCommand preview triggered by Enter** — changed the preview trigger from `Ctrl+P` (intercepted by VS Code) to `Enter` when the SubCommand field is focused.
+
+### Added
+
+- **SubCommand field in input editor** — the "Edit/New Input" form now exposes a `SubCommand` field (the shell command whose output populates the Tab-picker). Previously this field could only be set by hand-editing YAML files.
+- **SubCommand live preview** — while the SubCommand field is focused, press `Enter` to execute the command immediately and display the parsed results in the same picker overlay used at runtime. Navigate with `↑↓` and dismiss with `Esc`.
+- **Dynamic-input indicator in input list** — inputs that have a `sub_command` configured now show a `⚡` indicator in the editor's input-list view.
+
+## [v1.39.0] - 2026-03-17
+
+### Added
+
+- **macOS cross-platform builds** — release artifacts now include `darwin-amd64` and `darwin-arm64` (Apple Silicon) binaries.
+
+## [v1.38.0] - 2026-03-17
+
+### Added
+
+- **Windows cross-platform builds** — release artifacts now include `windows-amd64` and `windows-arm64` binaries.
+
 ## [v1.37.0] - 2026-03-16
 
 ### Added
