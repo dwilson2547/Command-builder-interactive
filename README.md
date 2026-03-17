@@ -11,11 +11,13 @@ get a fully-assembled command printed to stdout — ready to run, pipe, or captu
 - 🔍 **Fuzzy search** across all command templates with relevance scoring
 - 📝 **Interactive form** — fill in placeholders, preview the command live
 - 📋 **Clipboard copy** — the built command is automatically copied to your clipboard on confirm
+- ⚡ **Dynamic pickers** — inputs can run a shell command and show a live scrollable picker on Tab
 - 🏷️ **Searchable tags** — find commands by alternative terms you might think of
+- ⭐ **Starred commands** — save frequently-used commands with their values for quick re-use
 - 🗂️ **Config manager** — add, edit, delete, export, and import config packs
 - 🌐 **URL import** — pull shared command packs from any HTTP/HTTPS URL
 - 📁 **Local file import** — load configs from local YAML files with tab-completion
-- ✏️ **Built-in editor** — create and edit commands without leaving the TUI
+- ✏️ **Built-in editor** — create and edit commands, including dynamic picker sources, without leaving the TUI
 - ⚙️ **Settings** — customise the colour palette and toggle "run on enter" mode
 - 🎨 **Themeable** — all colours configurable via ANSI 256 codes or hex values
 - 🏷️ **Custom app name** — rename the app and optionally add a shell alias
@@ -38,6 +40,17 @@ mv command-builder-linux-amd64 ~/.local/bin/command-builder
 # Linux ARM64
 chmod +x command-builder-linux-arm64
 mv command-builder-linux-arm64 ~/.local/bin/command-builder
+
+# macOS (Apple Silicon)
+chmod +x command-builder-darwin-arm64
+mv command-builder-darwin-arm64 ~/.local/bin/command-builder
+
+# macOS (Intel)
+chmod +x command-builder-darwin-amd64
+mv command-builder-darwin-amd64 ~/.local/bin/command-builder
+
+# Windows — download command-builder-windows-amd64.exe or command-builder-windows-arm64.exe
+# and place it on your PATH.
 ```
 
 ### Build from source
@@ -101,6 +114,7 @@ The home screen. Type to filter results in real time.
 | `/default <terms>`             | Search only the built-in config            |
 | `/all <terms>`                 | Search all configs (default behaviour)     |
 | `/<config-name> <terms>`       | Search one specific config by name         |
+| `/s <terms>`                   | Show starred commands (filter by terms)    |
 | `/config`                      | Open the Config Manager                    |
 | `/import <url-or-path>`        | Import a config immediately                |
 | `/settings`                    | Open the Settings screen                   |
@@ -146,16 +160,21 @@ Fill in the template placeholders and watch the command assemble live.
 
 - Fields marked `*` are **required** — the command cannot be confirmed until all are filled.
 - `file` and `dir` fields support **Tab path completion**.
+- Inputs with a `sub_command` configured show a **Tab picker** — press Tab to run the command and select a value from the live results.
+- `flag` inputs are toggled with **Space**.
 - On confirm, the command is printed to stdout and **copied to clipboard**.
+- Press `*` to **star** the current command with its filled values for quick re-use later.
 
 **Keyboard shortcuts:**
 
 | Key       | Action                                            |
 |-----------|---------------------------------------------------|
-| Tab       | Next field / path completion                      |
+| Tab       | Next field / path completion / open sub-cmd picker|
 | Shift+Tab | Previous field                                    |
-| ↑ / ↓     | Previous/next field or completion item            |
+| ↑ / ↓     | Previous/next field, completion, or picker item   |
+| Space     | Toggle a `flag` input on/off                      |
 | Enter     | Next field; confirm when all required fields done |
+| *         | Star this command with current values             |
 | Esc       | Return to search                                  |
 | Ctrl+C    | Quit                                              |
 
@@ -188,6 +207,26 @@ form; save with **Ctrl+S**.
 When you save an Option, any `{{variable}}` placeholders in the template that
 don't yet have a matching Input are **automatically created** as optional string
 inputs, saving you manual setup.
+
+The Input form includes a **SubCommand** field — enter any shell command whose
+stdout (parsed as CSV) will populate a live Tab picker for that input. When the
+SubCommand field is focused, press **Enter** to preview the picker output before
+saving.
+
+---
+
+### Stars
+
+Press `*` on any completed form to star the command with its current values.
+Access starred commands from the search bar with `/s` — navigate to one and press
+**Enter** to reopen it pre-filled, then adjust and confirm as normal.
+
+| Key | Action                                 |
+|-----|----------------------------------------|
+| `/s <terms>` | Show starred commands (inline list) |
+| Enter        | Open pre-filled form for selected star |
+| d            | Delete selected star                   |
+| Esc          | Exit star mode / return to search      |
 
 ---
 
@@ -244,12 +283,16 @@ commands:
 
 **Input types:**
 
-| Type     | Behaviour                                      |
-|----------|------------------------------------------------|
-| `string` | Plain text field                               |
-| `file`   | Text field with Tab path completion (files)    |
-| `dir`    | Text field with Tab path completion (dirs)     |
-| `flag`   | Boolean toggle; omitted from command when off  |
+| Type     | Behaviour                                                        |
+|----------|------------------------------------------------------------------|
+| `string` | Plain text field                                                 |
+| `file`   | Text field with Tab path completion (files)                      |
+| `dir`    | Text field with Tab path completion (dirs)                       |
+| `flag`   | Boolean toggle; Space to toggle; omitted from command when off   |
+
+Any input type can also have a `sub_command` — a shell command that populates a
+live scrollable picker when the user presses Tab. See
+[`docs/sub-command-completions.md`](docs/sub-command-completions.md) for details.
 
 See [`docs/config-format.md`](docs/config-format.md) for the full schema reference.
 
@@ -274,6 +317,7 @@ Team members can then press **u** in the Config Manager to pull updates. See
 |-----------------------------------------------|---------------------------------|
 | `~/.config/command-builder/configs/`          | User config YAML files          |
 | `~/.config/command-builder/settings.json`     | Colour palette and preferences  |
+| `~/.config/command-builder/stars.json`        | Starred commands and saved values |
 
 ---
 

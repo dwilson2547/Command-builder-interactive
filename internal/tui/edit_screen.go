@@ -10,6 +10,8 @@ import (
 	"github.com/dwilson2547/command-builder/internal/config"
 )
 
+const subCmdFieldIdx = 5 // index of the SubCommand field in the input form
+
 // goToEditMsg navigates to the config edit screen for the given config.
 type goToEditMsg struct{ cfg *config.Config }
 
@@ -55,6 +57,13 @@ type EditScreenModel struct {
 	message string
 	width   int
 	height  int
+
+	// preview state — sub-command live preview in the input form.
+	previewLoading bool
+	previewItems   []SubCmdItem
+	previewIdx     int
+	previewErr     string
+	showPreview    bool
 }
 
 // NewEditScreenModel creates the editor for cfg.
@@ -82,6 +91,19 @@ func (m EditScreenModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for i := range m.formFields {
 			m.formFields[i].Width = inputW
 		}
+		return m, nil
+
+	case subCmdResultMsg:
+		m.previewLoading = false
+		if msg.err != nil {
+			m.previewErr = msg.err.Error()
+			m.previewItems = nil
+		} else {
+			m.previewErr = ""
+			m.previewItems = msg.items
+		}
+		m.previewIdx = 0
+		m.showPreview = true
 		return m, nil
 
 	case tea.KeyMsg:
@@ -199,9 +221,13 @@ func (m EditScreenModel) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case tea.KeyEsc:
+		if m.showPreview {
+			m.showPreview = false
+			return m, nil
+		}
 		m.submode = editSubBrowse
 		m.message = ""
-		// Blur all inputs.
+		m.showPreview = false
 		for i := range m.formFields {
 			m.formFields[i].Blur()
 		}
@@ -215,28 +241,76 @@ func (m EditScreenModel) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		newM.message = StyleInfo.Render("Saved.")
 		newM.submode = editSubBrowse
+		newM.showPreview = false
 		for i := range newM.formFields {
 			newM.formFields[i].Blur()
 		}
 		return newM, nil
 
-	case tea.KeyTab, tea.KeyDown:
+	case tea.KeyEnter:
+		// On the SubCommand field, Enter runs a live preview instead of
+		// navigating — Ctrl+S is used to save so Enter is free here.
+		if m.level == editLevelInputs && m.formFocus == subCmdFieldIdx && !m.previewLoading {
+			subCmd := strings.TrimSpace(m.formFields[subCmdFieldIdx].Value())
+			if subCmd != "" {
+				m.previewLoading = true
+				m.showPreview = false
+				m.previewErr = ""
+				m.previewItems = nil
+				return m, func() tea.Msg { return runSubCommand(subCmd, 0) }
+			}
+		}
+		return m, nil
+
+	case tea.KeyUp:
+		if m.showPreview {
+			if m.previewIdx > 0 {
+				m.previewIdx--
+			}
+			return m, nil
+		}
+		if len(m.formFields) > 0 {
+			m.formFields[m.formFocus].Blur()
+			m.formFocus = (m.formFocus - 1 + len(m.formFields)) % len(m.formFields)
+			return m, m.formFields[m.formFocus].Focus()
+		}
+
+	case tea.KeyDown:
+		if m.showPreview {
+			if m.previewIdx < len(m.previewItems)-1 {
+				m.previewIdx++
+			}
+			return m, nil
+		}
 		if len(m.formFields) > 0 {
 			m.formFields[m.formFocus].Blur()
 			m.formFocus = (m.formFocus + 1) % len(m.formFields)
 			return m, m.formFields[m.formFocus].Focus()
 		}
 
-	case tea.KeyShiftTab, tea.KeyUp:
+	case tea.KeyTab:
 		if len(m.formFields) > 0 {
+			m.showPreview = false
+			m.formFields[m.formFocus].Blur()
+			m.formFocus = (m.formFocus + 1) % len(m.formFields)
+			return m, m.formFields[m.formFocus].Focus()
+		}
+
+	case tea.KeyShiftTab:
+		if len(m.formFields) > 0 {
+			m.showPreview = false
 			m.formFields[m.formFocus].Blur()
 			m.formFocus = (m.formFocus - 1 + len(m.formFields)) % len(m.formFields)
 			return m, m.formFields[m.formFocus].Focus()
 		}
 	}
 
-	// Delegate key to focused text input.
+	// Delegate key to focused text input; any typing on the SubCommand field
+	// resets the stale preview.
 	if m.formFocus < len(m.formFields) {
+		if m.level == editLevelInputs && m.formFocus == subCmdFieldIdx {
+			m.showPreview = false
+		}
 		var cmd tea.Cmd
 		m.formFields[m.formFocus], cmd = m.formFields[m.formFocus].Update(msg)
 		return m, cmd
@@ -286,7 +360,7 @@ func (m EditScreenModel) openForm(isNew bool) (EditScreenModel, tea.Cmd) {
 		m.formFields = makeEditInputs([]string{name, desc, tmpl, tags}, inputW)
 
 	case editLevelInputs:
-		var name, typ, desc, req, def string
+		var name, typ, desc, req, def, subCmd string
 		typ = "string"
 		req = "false"
 		if !isNew && m.cmdIdx < len(m.cfg.Commands) {
@@ -305,6 +379,7 @@ func (m EditScreenModel) openForm(isNew bool) (EditScreenModel, tea.Cmd) {
 						req = "true"
 					}
 					def = inp.Default
+					subCmd = inp.SubCommand
 				}
 			}
 		}
@@ -315,8 +390,15 @@ func (m EditScreenModel) openForm(isNew bool) (EditScreenModel, tea.Cmd) {
 			"Description",
 			"Required  (true / false)",
 			"Default value",
+			"SubCommand  (shell cmd for Tab-picker, optional)",
 		}
-		m.formFields = makeEditInputs([]string{name, typ, desc, req, def}, inputW)
+		m.formFields = makeEditInputs([]string{name, typ, desc, req, def, subCmd}, inputW)
+		// Reset any stale preview state.
+		m.showPreview = false
+		m.previewLoading = false
+		m.previewItems = nil
+		m.previewErr = ""
+		m.previewIdx = 0
 	}
 
 	return m, m.formFields[0].Focus()
@@ -398,6 +480,7 @@ func (m EditScreenModel) saveForm() (EditScreenModel, error) {
 		desc := strings.TrimSpace(m.formFields[2].Value())
 		reqStr := strings.TrimSpace(m.formFields[3].Value())
 		def := strings.TrimSpace(m.formFields[4].Value())
+		subCmd := strings.TrimSpace(m.formFields[subCmdFieldIdx].Value())
 		if name == "" {
 			return m, fmt.Errorf("name cannot be empty")
 		}
@@ -419,6 +502,7 @@ func (m EditScreenModel) saveForm() (EditScreenModel, error) {
 			Description: desc,
 			Required:    req,
 			Default:     def,
+			SubCommand:  subCmd,
 		}
 		if m.formIsNew {
 			opt.Inputs = append(opt.Inputs, inp)
@@ -624,9 +708,20 @@ func (m EditScreenModel) View() string {
 	var keys string
 	switch m.submode {
 	case editSubForm:
-		keys = StyleStatusKey.Render(" Ctrl+S") + StyleStatus.Render(" save") +
-			StyleStatusKey.Render("  Tab") + StyleStatus.Render(" next field") +
-			StyleStatusKey.Render("  Esc") + StyleStatus.Render(" cancel")
+		if m.showPreview {
+			keys = StyleStatusKey.Render(" ↑↓") + StyleStatus.Render(" navigate preview") +
+				StyleStatusKey.Render("  Esc") + StyleStatus.Render(" close") +
+				StyleStatusKey.Render("  Ctrl+S") + StyleStatus.Render(" save")
+		} else {
+			keys = StyleStatusKey.Render(" Ctrl+S") + StyleStatus.Render(" save") +
+				StyleStatusKey.Render("  Tab") + StyleStatus.Render(" next field") +
+				StyleStatusKey.Render("  Esc") + StyleStatus.Render(" cancel")
+			if m.level == editLevelInputs && m.formFocus == subCmdFieldIdx &&
+				len(m.formFields) > subCmdFieldIdx &&
+				strings.TrimSpace(m.formFields[subCmdFieldIdx].Value()) != "" {
+				keys += StyleStatusKey.Render("  Enter") + StyleStatus.Render(" preview")
+			}
+		}
 	case editSubDelete:
 		keys = StyleStatusKey.Render(" y") + StyleStatus.Render(" confirm delete") +
 			StyleStatusKey.Render("  n / Esc") + StyleStatus.Render(" cancel")
@@ -686,8 +781,12 @@ func (m EditScreenModel) renderList(w, h int) string {
 					if inp.Required {
 						req = StyleInputLabelRequired.Render(" *")
 					}
+					dynIndicator := ""
+					if inp.SubCommand != "" {
+						dynIndicator = StyleResultDesc.Render(" ⚡")
+					}
 					rows = append(rows, row{
-						fmt.Sprintf("%-18s  %-8s  %s", inp.Name, inp.Type, inp.Description) + req,
+						fmt.Sprintf("%-18s  %-8s  %s", inp.Name, inp.Type, inp.Description) + req + dynIndicator,
 					})
 				}
 			}
@@ -733,7 +832,83 @@ func (m EditScreenModel) renderForm(w int) string {
 			fieldView = StyleInputBlurred.Width(w - 6).Render(m.formFields[i].View())
 		}
 		b.WriteString(fieldView + "\n\n")
+
+		// SubCommand preview panel — shown below that field when it is focused.
+		if m.level == editLevelInputs && i == subCmdFieldIdx && i == m.formFocus {
+			if m.previewLoading {
+				b.WriteString(StyleSubCmdBox.Width(w-6).Render(
+					StyleSubCmdLoading.Render("Running preview…"),
+				) + "\n\n")
+			} else if m.showPreview {
+				b.WriteString(m.renderPreview(w) + "\n\n")
+			} else if strings.TrimSpace(m.formFields[subCmdFieldIdx].Value()) != "" {
+				b.WriteString(StyleResultDesc.Render("  Enter to preview") + "\n\n")
+			}
+		}
 	}
 
 	return b.String()
+}
+
+// renderPreview renders the sub-command picker overlay for the edit-screen preview.
+func (m EditScreenModel) renderPreview(w int) string {
+	const maxVisible = 8
+
+	if m.previewErr != "" {
+		return StyleSubCmdBox.Width(w - 6).Render(
+			StyleError.Render("Error: " + m.previewErr),
+		)
+	}
+	if len(m.previewItems) == 0 {
+		return StyleSubCmdBox.Width(w - 6).Render(
+			StyleSubCmdLoading.Render("No results"),
+		)
+	}
+
+	start := 0
+	if m.previewIdx >= maxVisible {
+		start = m.previewIdx - maxVisible + 1
+	}
+	end := start + maxVisible
+	if end > len(m.previewItems) {
+		end = len(m.previewItems)
+	}
+	visible := m.previewItems[start:end]
+
+	maxVal := 0
+	for _, item := range visible {
+		if len(item.Value) > maxVal {
+			maxVal = len(item.Value)
+		}
+	}
+
+	innerWidth := max(20, w-10)
+
+	var rows []string
+	for i, item := range visible {
+		absIdx := start + i
+		selected := absIdx == m.previewIdx
+
+		var row string
+		if item.Detail != "" {
+			pad := strings.Repeat(" ", max(1, maxVal-len(item.Value)+2))
+			row = item.Value + pad + item.Detail
+		} else {
+			row = item.Value
+		}
+
+		if selected {
+			rows = append(rows, StyleSubCmdSelected.Width(innerWidth).Render(row))
+		} else {
+			rows = append(rows, StyleSubCmdItem.Width(innerWidth).Render(row))
+		}
+	}
+
+	if len(m.previewItems) > maxVisible {
+		rows = append(rows, StyleResultDesc.Render(
+			fmt.Sprintf("  %d / %d", m.previewIdx+1, len(m.previewItems)),
+		))
+	}
+
+	return StyleSubCmdBox.Width(w - 6).Render(strings.Join(rows, "\n"))
 }

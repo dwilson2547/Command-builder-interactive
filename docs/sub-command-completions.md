@@ -88,3 +88,7 @@ When focused on an input that has a `sub_command`, the status bar shows a
   overlay, and vice versa.
 - Sub-commands run asynchronously so the UI stays responsive while the command
   executes.
+- You can set and test the `sub_command` field directly in the **built-in editor**
+  (Config Manager → select config → **e** → drill into an Option → **e** on an Input).
+  When the SubCommand field is focused, press **Enter** to preview the picker output
+  before saving.

@@ -203,8 +203,8 @@ func (m SearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m.deleteSelectedStar()
 				}
 			}
-			// Swallow all other keys in star mode so they don't reach the input.
-			return m, nil
+			// Fall through so typing/backspace reach the text input, allowing
+			// the user to filter stars ("/s <term>") or exit star mode entirely.
 		}
 
 	case importURLMsg:
